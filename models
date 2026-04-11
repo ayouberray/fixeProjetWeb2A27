@@ -1,0 +1,122 @@
+<?php
+// models/UserModel.php
+
+require_once __DIR__ . '/../core/Model.php';
+
+class UserModel extends Model {
+
+    public function findByEmail(string $email): ?array {
+        $stmt = $this->db->prepare("SELECT * FROM users WHERE email = :email LIMIT 1");
+        $stmt->execute([':email' => $email]);
+        $user = $stmt->fetch();
+        return $user ?: null;
+    }
+
+    public function findById(int $id): ?array {
+        $stmt = $this->db->prepare("SELECT * FROM users WHERE id = :id LIMIT 1");
+        $stmt->execute([':id' => $id]);
+        $user = $stmt->fetch();
+        return $user ?: null;
+    }
+
+    public function emailExists(string $email, int $excludeId = 0): bool {
+        $stmt = $this->db->prepare(
+            "SELECT COUNT(*) FROM users WHERE email = :email AND id != :id"
+        );
+        $stmt->execute([':email' => $email, ':id' => $excludeId]);
+        return (int)$stmt->fetchColumn() > 0;
+    }
+
+    public function create(array $data): int {
+        $sql = "INSERT INTO users (nom, prenom, email, password, role, telephone, adresse, date_naissance, cin, statut) 
+                VALUES (:nom, :prenom, :email, :password, :role, :telephone, :adresse, :date_naissance, :cin, :statut)";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            ':nom' => $data['nom'],
+            ':prenom' => $data['prenom'],
+            ':email' => $data['email'],
+            ':password' => password_hash($data['password'], PASSWORD_BCRYPT),
+            ':role' => $data['role'] ?? 'client',
+            ':telephone' => $data['telephone'] ?? null,
+            ':adresse' => $data['adresse'] ?? null,
+            ':date_naissance' => $data['date_naissance'] ?? null,
+            ':cin' => $data['cin'] ?? null,
+            ':statut' => $data['statut'] ?? 'actif',
+        ]);
+        return (int)$this->db->lastInsertId();
+    }
+
+    public function getAll(string $search = '', string $role = '', string $statut = ''): array {
+        $sql = "SELECT * FROM users WHERE 1=1";
+        $params = [];
+        
+        if ($search !== '') {
+            $sql .= " AND (nom LIKE :s OR prenom LIKE :s OR email LIKE :s)";
+            $params[':s'] = "%$search%";
+        }
+        if ($role !== '') {
+            $sql .= " AND role = :role";
+            $params[':role'] = $role;
+        }
+        if ($statut !== '') {
+            $sql .= " AND statut = :statut";
+            $params[':statut'] = $statut;
+        }
+        
+        $sql .= " ORDER BY created_at DESC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll();
+    }
+
+    public function update(int $id, array $data): bool {
+        $fields = [];
+        $params = [':id' => $id];
+        
+        $updatable = ['nom', 'prenom', 'email', 'role', 'telephone', 'adresse', 'date_naissance', 'cin', 'statut'];
+        foreach ($updatable as $f) {
+            if (array_key_exists($f, $data)) {
+                $fields[] = "$f = :$f";
+                $params[":$f"] = $data[$f];
+            }
+        }
+        if (!empty($data['password'])) {
+            $fields[] = "password = :password";
+            $params[':password'] = password_hash($data['password'], PASSWORD_BCRYPT);
+        }
+        if (empty($fields)) return false;
+        
+        $stmt = $this->db->prepare("UPDATE users SET " . implode(', ', $fields) . " WHERE id = :id");
+        return $stmt->execute($params);
+    }
+
+    public function delete(int $id): bool {
+        $stmt = $this->db->prepare("DELETE FROM users WHERE id = :id");
+        return $stmt->execute([':id' => $id]);
+    }
+
+    public function countByRole(): array {
+        $stmt = $this->db->query("SELECT role, COUNT(*) as total FROM users GROUP BY role");
+        $result = ['admin' => 0, 'client' => 0];
+        foreach ($stmt->fetchAll() as $row) {
+            $result[$row['role']] = (int)$row['total'];
+        }
+        return $result;
+    }
+
+    public function countByStatut(): array {
+        $stmt = $this->db->query("SELECT statut, COUNT(*) as total FROM users GROUP BY statut");
+        $result = ['actif' => 0, 'inactif' => 0, 'suspendu' => 0];
+        foreach ($stmt->fetchAll() as $row) {
+            $result[$row['statut']] = (int)$row['total'];
+        }
+        return $result;
+    }
+
+    public function getRecentUsers(int $limit = 5): array {
+        $stmt = $this->db->prepare("SELECT * FROM users ORDER BY created_at DESC LIMIT :limit");
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll();
+    }
+}
