@@ -1,7 +1,5 @@
 <?php
 
-
-
 class Config{
 private static $pdo;
 
@@ -10,7 +8,7 @@ if(!isset(self::$pdo)){
 $servername="localhost";
 $username="root";
 $password="";
-$dbname="pro";
+$dbname="municipalite";
 try{
 self::$pdo=new PDO("mysql:host=$servername;dbname=$dbname",
 $username,
@@ -18,7 +16,6 @@ $password,
 [PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,
 PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC]
 );
-// echo "Database connected successfully";
 }
 catch(PDOException $e){
     echo "erreur".$e->getMessage();
@@ -30,10 +27,5 @@ return self::$pdo;
 
 }
 }
-
-// Config::getConnexion();
-
-
-
 
 ?>
