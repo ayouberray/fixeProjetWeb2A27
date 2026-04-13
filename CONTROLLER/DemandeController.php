@@ -59,7 +59,8 @@ class DemandeController {
                 if ($this->addDemande($demande)) {
                     $id = Config::getConnexion()->lastInsertId();
                     $this->suiviModel->ajouter($id, null, 'en_attente', 'Demande créée');
-                    header('Location: ../frontoffice/index.php?success=Demande créée');
+                    // MODIFICATION ICI : Rediriger vers la page de succès
+                    header('Location: ../backoffice/ajouter_demande.php?success=created');
                     exit();
                 }
             }
