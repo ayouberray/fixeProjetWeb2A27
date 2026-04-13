@@ -17,7 +17,7 @@ class Config{
                 );
             }
             catch(PDOException $e){
-                echo "Erreur de connexion: ".$e->getMessage();
+                echo "erreur".$e->getMessage();
             }
         }
         return self::$pdo;
