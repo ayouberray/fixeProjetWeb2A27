@@ -59,7 +59,7 @@ class DemandeController {
                 if ($this->addDemande($demande)) {
                     $id = Config::getConnexion()->lastInsertId();
                     $this->suiviModel->ajouter($id, null, 'en_attente', 'Demande créée');
-                    header('Location: index.php?success=Demande créée');
+                    header('Location: ../frontoffice/index.php?success=Demande créée');
                     exit();
                 }
             }
@@ -114,7 +114,7 @@ class DemandeController {
     }
     
     // ============================================
-    // 4. SUPPRIMER - Pour supprimer_demande.php
+    // 4. SUPPRIMER - Pour supprimer_demande.php (afficher confirmation)
     // ============================================
     public function supprimer($id) {
         $this->checkAuth();
@@ -126,14 +126,42 @@ class DemandeController {
             exit();
         }
         
-        if (isset($_GET['confirm']) && $_GET['confirm'] === 'yes') {
-            $this->suiviModel->supprimerParDemande($id);
-            $this->deleteDemande($id);
-            header('Location: ../frontoffice/index.php?success=Demande supprimée');
-            exit();
-        }
-        
         return ['demande' => $demande];
+    }
+    
+    // ============================================
+    // 4bis. DELETE DEMANDE CONFIRM - Exécuter la suppression
+    // ============================================
+    /**
+     * Confirme et exécute la suppression d'une demande
+     * @param int $id_demande
+     * @return array ['success' => bool, 'error' => string|null]
+     */
+    public function deleteDemandeConfirm($id_demande) {
+        $this->checkAuth();
+        $user_id = $_SESSION['user_id'];
+        
+        try {
+            // Vérifier que la demande appartient bien à l'utilisateur
+            $demande = $this->getDemandeById($id_demande);
+            if (!$demande || $demande['id_citoyen'] != $user_id) {
+                return ['success' => false, 'error' => 'Demande introuvable ou non autorisée'];
+            }
+            
+            // Supprimer l'historique de suivi associé
+            $this->suiviModel->supprimerParDemande($id_demande);
+            
+            // Supprimer la demande
+            $result = $this->deleteDemande($id_demande);
+            
+            if ($result) {
+                return ['success' => true];
+            } else {
+                return ['success' => false, 'error' => 'Erreur lors de la suppression dans la base de données'];
+            }
+        } catch (Exception $e) {
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
     }
     
     // ============================================
@@ -187,7 +215,8 @@ class DemandeController {
     public function getDemandesByCitoyen($id_citoyen) {
         $sql = "SELECT d.*, s.nom_service,
                        DATE_FORMAT(d.date_creation, '%d/%m/%Y') as date_formatee,
-                       DATE_FORMAT(d.date_creation, '%H:%i') as heure_formatee
+                       DATE_FORMAT(d.date_creation, '%H:%i') as heure_formatee,
+                       DATEDIFF(NOW(), d.date_creation) as jours_ecoules
                 FROM demandes d
                 LEFT JOIN services s ON d.id_service = s.id_service
                 WHERE d.id_citoyen = ? ORDER BY d.date_creation DESC";
