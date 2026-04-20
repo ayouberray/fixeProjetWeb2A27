@@ -1,105 +1,109 @@
 ﻿<?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-require_once __DIR__."/../../CONTROLLER/EmploiController.php";
+require_once __DIR__ . '/../../CONTROLLER/EmploiController.php';
+require_once __DIR__ . '/../shared/theme.php';
+
 $ctrl = new EmploiController();
 $erreur = '';
-
-// Récupérer les listes
 $agents = $ctrl->getAgents();
 $services = $ctrl->getServices();
 $shifts = $ctrl->getShifts();
 
-if($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $id_agent = $_POST['id_agent'] ?? '';
-    $id_service = $_POST['id_service'] ?? '';
-    $id_shift = $_POST['id_shift'] ?? '';
-    $date_travail = $_POST['date_travail'] ?? '';
-    
-    if($id_agent && $id_service && $id_shift && $date_travail) {
-        if($ctrl->ajouterEmploi($id_agent, $id_service, $id_shift, $date_travail)) {
-            header("Location: admin-emplois-lister.php");
-            exit();
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $id_agent = trim($_POST['id_agent'] ?? '');
+    $id_service = trim($_POST['id_service'] ?? '');
+    $id_shift = trim($_POST['id_shift'] ?? '');
+    $date_travail = trim($_POST['date_travail'] ?? '');
+
+    if ($id_agent && $id_service && $id_shift && $date_travail) {
+        $idsAgents = array_map('intval', array_column($agents, 'id'));
+        $idsServices = array_map('intval', array_column($services, 'id_service'));
+        $idsShifts = array_map('intval', array_column($shifts, 'id_shift'));
+
+        $agentValide = ctype_digit($id_agent) && in_array((int) $id_agent, $idsAgents, true);
+        $serviceValide = ctype_digit($id_service) && in_array((int) $id_service, $idsServices, true);
+        $shiftValide = ctype_digit($id_shift) && in_array((int) $id_shift, $idsShifts, true);
+
+        $dateObj = DateTime::createFromFormat('Y-m-d', $date_travail);
+        $dateValide = $dateObj && $dateObj->format('Y-m-d') === $date_travail;
+
+        if (!$agentValide || !$serviceValide || !$shiftValide || !$dateValide) {
+            $erreur = theme_t('Controle de saisie invalide', '?????? ??????? ??? ????');
         } else {
-            $erreur = "Erreur lors de l'ajout";
+            if ($ctrl->ajouterEmploi((int) $id_agent, (int) $id_service, (int) $id_shift, $date_travail)) {
+                header('Location: ' . theme_url('VIEW/backoffice/admin-emplois-lister.php?toast=' . urlencode(theme_t('Emploi ajoute avec succes', '??? ????? ?????? ?????')) . '&type=success'));
+                exit();
+            }
+
+            $erreur = theme_t('Erreur lors de l ajout', '??? ??? ????? ???????');
         }
     } else {
-        $erreur = "Tous les champs sont obligatoires";
+        $erreur = theme_t('Tous les champs sont obligatoires', '?? ?????? ???????');
     }
 }
+
+theme_render_start([
+    'title' => theme_t('Ajouter un emploi', '????? ????'),
+    'page_title' => theme_t('Ajouter un emploi', '????? ????'),
+    'page_subtitle' => theme_t('Affectez un agent a un service et un shift avec une interface uniforme.', '???? ???? ??? ???? ??????? ??? ????? ?????.'),
+    'nav_context' => 'emplois',
+    'back_href' => theme_url('VIEW/backoffice/admin-emplois-lister.php'),
+]);
 ?>
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Ajouter un Emploi</title>
-    <style>
-        body{font-family:Arial;padding:20px;background:#f5f5f5;}
-        .container{max-width:600px;background:white;padding:30px;border-radius:5px;box-shadow:0 0 10px rgba(0,0,0,0.1);}
-        h1{color:#005C9E;}
-        .form-group{margin:20px 0;}
-        label{display:block;margin-bottom:5px;font-weight:bold;}
-        input, select{width:100%;padding:10px;border:1px solid #ddd;border-radius:3px;box-sizing:border-box;font-size:14px;}
-        select{cursor:pointer;}
-        .btn{padding:10px 20px;background:#005C9E;color:white;border:none;border-radius:3px;cursor:pointer;margin-right:10px;font-size:14px;}
-        .btn:hover{background:#003f75;}
-        .btn-cancel{background:#666;}
-        .btn-cancel:hover{background:#444;}
-        .erreur{color:red;background:#ffe6e6;padding:10px;border-radius:3px;margin-bottom:20px;}
-    </style>
-</head>
-<body>
-<div class="container">
-    <h1>➕ Ajouter un Emploi (Planning)</h1>
-    <button type="button" class="btn btn-cancel" onclick="if(history.length>1){history.back();}else{window.location.href='admin-emplois-lister.php';}" style="margin-bottom:15px;display:inline-block;">← Retour</button>
-    <?php if($erreur): ?>
-    <div class="erreur"><?= htmlspecialchars($erreur) ?></div>
+<div class="form-panel">
+    <h2><?= htmlspecialchars(theme_t('Creation d un planning', '????? ????')) ?></h2>
+
+    <?php if ($erreur !== ''): ?>
+        <div class="alert alert--error"><?= htmlspecialchars($erreur) ?></div>
     <?php endif; ?>
-    
-    <form method="POST">
+
+    <form method="POST" class="form-grid">
         <div class="form-group">
-            <label>Agent:</label>
-            <select name="id_agent" required>
-                <option value="">-- Sélectionner un agent --</option>
-                <?php foreach($agents as $a): ?>
-                <option value="<?= $a['id'] ?>"><?= htmlspecialchars($a['nom'].' '.$a['prenom']) ?></option>
+            <label for="id_agent"><?= htmlspecialchars(theme_t('Agent', '?????')) ?></label>
+            <select id="id_agent" name="id_agent" required>
+                <option value=""><?= htmlspecialchars(theme_t('Selectionner un agent', '???? ????')) ?></option>
+                <?php foreach ($agents as $agent): ?>
+                    <option value="<?= (int) $agent['id'] ?>"><?= htmlspecialchars($agent['nom'] . ' ' . $agent['prenom']) ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
-        
+
         <div class="form-group">
-            <label>Service:</label>
-            <select name="id_service" required>
-                <option value="">-- Sélectionner un service --</option>
-                <?php foreach($services as $s): ?>
-                <option value="<?= $s['id_service'] ?>"><?= htmlspecialchars($s['nom_service']) ?></option>
+            <label for="id_service"><?= htmlspecialchars(theme_t('Service', '??????')) ?></label>
+            <select id="id_service" name="id_service" required>
+                <option value=""><?= htmlspecialchars(theme_t('Selectionner un service', '???? ????')) ?></option>
+                <?php foreach ($services as $service): ?>
+                    <option value="<?= (int) $service['id_service'] ?>"><?= htmlspecialchars($service['nom_service']) ?></option>
                 <?php endforeach; ?>
             </select>
         </div>
-        
-        <div class="form-group">
-            <label>Shift (Horaire):</label>
-            <select name="id_shift" required>
-                <option value="">-- Sélectionner un shift --</option>
-                <?php foreach($shifts as $sh): ?>
-                <option value="<?= $sh['id_shift'] ?>">
-                    <?= htmlspecialchars($sh['nom_shift']).' - '.substr($sh['heure_debut'],0,5).' à '.substr($sh['heure_fin'],0,5) ?>
-                </option>
+
+        <div class="form-group form-group--full">
+            <label for="id_shift"><?= htmlspecialchars(theme_t('Shift', '????????')) ?></label>
+            <select id="id_shift" name="id_shift" required>
+                <option value=""><?= htmlspecialchars(theme_t('Selectionner un shift', '???? ??????')) ?></option>
+                <?php foreach ($shifts as $shift): ?>
+                    <option value="<?= (int) $shift['id_shift'] ?>">
+                        <?= htmlspecialchars($shift['nom_shift']) ?> - <?= htmlspecialchars(substr($shift['heure_debut'], 0, 5)) ?> / <?= htmlspecialchars(substr($shift['heure_fin'], 0, 5)) ?>
+                    </option>
                 <?php endforeach; ?>
             </select>
         </div>
-        
-        <div class="form-group">
-            <label>Date du Travail:</label>
-            <input type="date" name="date_travail" required>
+
+        <div class="form-group form-group--full">
+            <label for="date_travail"><?= htmlspecialchars(theme_t('Date du travail', '????? ?????')) ?></label>
+            <input id="date_travail" type="date" name="date_travail" required>
         </div>
-        
-        <div class="form-group">
-            <button type="submit" class="btn">Ajouter</button>
-            <a href="admin-emplois-lister.php" class="btn btn-cancel" style="text-decoration:none;">Annuler</a>
+
+        <div class="form-actions form-group--full">
+            <button type="submit" class="btn btn--primary">
+                <i class="fa-solid fa-floppy-disk"></i>
+                <?= htmlspecialchars(theme_t('Ajouter', '?????')) ?>
+            </button>
+            <a href="<?= htmlspecialchars(theme_url('VIEW/backoffice/admin-emplois-lister.php')) ?>" class="btn btn--ghost">
+                <?= htmlspecialchars(theme_t('Annuler', '?????')) ?>
+            </a>
         </div>
     </form>
 </div>
-</body>
-</html>
+<?php theme_render_end(); ?>
 

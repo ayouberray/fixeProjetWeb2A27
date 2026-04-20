@@ -1,76 +1,92 @@
 ﻿<?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-require_once __DIR__."/../../CONTROLLER/EmploiController.php";
+require_once __DIR__ . '/../../CONTROLLER/EmploiController.php';
+require_once __DIR__ . '/../shared/theme.php';
+
 $ctrl = new EmploiController();
 $emplois = $ctrl->getAllEmplois();
+
+function emploi_badge_class($statut) {
+    if ($statut === 'termine') {
+        return 'badge badge--success';
+    }
+    if ($statut === 'annule') {
+        return 'badge badge--danger';
+    }
+    return 'badge badge--warning';
+}
+
+theme_render_start([
+    'title' => theme_t('Gestion des emplois', '????? ???????'),
+    'page_title' => theme_t('Gestion des emplois', '????? ???????'),
+    'page_subtitle' => theme_t('Pilotez les affectations des agents avec un affichage plus propre et plus moderne.', '?? ?????? ??????? ??????? ??? ??? ???? ????? ?????.'),
+    'nav_context' => 'emplois',
+]);
 ?>
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Emplois</title>
-    <style>
-        body{font-family:Arial;padding:20px;background:#f5f5f5;}
-        .container{max-width:1200px;margin:0 auto;background:white;padding:20px;border-radius:5px;box-shadow:0 0 10px rgba(0,0,0,0.1);}
-        h1{color:#005C9E;}
-        table{border-collapse:collapse;width:100%;margin-top:20px;}
-        th,td{border:1px solid #ddd;padding:10px;text-align:left;}
-        th{background:#005C9E;color:white;}
-        tr:hover{background:#f9f9f9;}
-        .btn{display:inline-block;padding:5px 10px;color:white;text-decoration:none;border-radius:3px;margin-right:5px;font-size:12px;}
-        .btn-add{background:#005C9E;padding:10px 15px;font-size:14px;}
-        .btn-edit{background:#FFA500;}
-        .btn-delete{background:#e31e24;}
-        .btn-edit:hover{background:#FF8C00;}
-        .btn-delete:hover{background:#c41a1f;}
-        .small{font-size:12px;color:#666;}
-    </style>
-</head>
-<body>
-<div class="container">
-    <h1>📋 Gestion des Emplois (Plannings)</h1>
-    <a href="admin-emplois-ajouter.php" class="btn btn-add">+ Ajouter un Emploi</a>
-    <br><br>
-    
-    <?php if(!empty($emplois)): ?>
-    <table>
-        <tr>
-            <th>ID</th>
-            <th>Agent</th>
-            <th>Service</th>
-            <th>Shift</th>
-            <th>Date Travail</th>
-            <th>Statut</th>
-            <th>Actions</th>
-        </tr>
-        <?php foreach($emplois as $e): ?>
-        <tr>
-            <td><?= $e['id_emploi'] ?></td>
-            <td><?= htmlspecialchars($e['agent_nom'] ?? 'N/A').' '.htmlspecialchars($e['agent_prenom'] ?? '') ?></td>
-            <td><?= htmlspecialchars($e['nom_service'] ?? 'N/A') ?></td>
-            <td>
-                <span class="small"><?= htmlspecialchars($e['nom_shift'] ?? 'N/A') ?></span><br>
-                <span class="small"><?= substr($e['heure_debut'] ?? '00:00', 0, 5) ?> - <?= substr($e['heure_fin'] ?? '00:00', 0, 5) ?></span>
-            </td>
-            <td><?= date('d/m/Y', strtotime($e['date_travail'])) ?></td>
-            <td>
-                <?php 
-                    $statuts = ['planifie' => '🔵 Planifié', 'termine' => '✅ Terminé', 'annule' => '❌ Annulé'];
-                    echo $statuts[$e['statut']] ?? $e['statut'];
-                ?>
-            </td>
-            <td>
-                <a href="admin-emplois-modifier.php?id=<?= $e['id_emploi'] ?>" class="btn btn-edit">Modifier</a>
-                <a href="admin-emplois-supprimer.php?id=<?= $e['id_emploi'] ?>" class="btn btn-delete" onclick="return confirm('Supprimer ?')">Supprimer</a>
-            </td>
-        </tr>
-        <?php endforeach; ?>
-    </table>
+<div class="table-panel">
+    <div class="panel-toolbar">
+        <div>
+            <span class="eyebrow"><?= htmlspecialchars(theme_t('Backoffice', '???????')) ?></span>
+            <h2><?= htmlspecialchars(theme_t('Liste des emplois', '????? ???????')) ?></h2>
+        </div>
+        <a href="<?= htmlspecialchars(theme_url('VIEW/backoffice/admin-emplois-ajouter.php')) ?>" class="btn btn--primary">
+            <i class="fa-solid fa-plus"></i>
+            <?= htmlspecialchars(theme_t('Ajouter un emploi', '????? ????')) ?>
+        </a>
+    </div>
+
+    <?php if (!empty($emplois)): ?>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th><?= htmlspecialchars(theme_t('Agent', '?????')) ?></th>
+                        <th><?= htmlspecialchars(theme_t('Service', '??????')) ?></th>
+                        <th><?= htmlspecialchars(theme_t('Shift', '????????')) ?></th>
+                        <th><?= htmlspecialchars(theme_t('Date', '???????')) ?></th>
+                        <th><?= htmlspecialchars(theme_t('Statut', '??????')) ?></th>
+                        <th><?= htmlspecialchars(theme_t('Actions', '?????????')) ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($emplois as $emploi): ?>
+                        <tr>
+                            <td><?= (int) $emploi['id_emploi'] ?></td>
+                            <td><?= htmlspecialchars(($emploi['agent_nom'] ?? 'N/A') . ' ' . ($emploi['agent_prenom'] ?? '')) ?></td>
+                            <td><?= htmlspecialchars($emploi['nom_service'] ?? 'N/A') ?></td>
+                            <td>
+                                <strong><?= htmlspecialchars($emploi['nom_shift'] ?? 'N/A') ?></strong><br>
+                                <span class="muted"><?= htmlspecialchars(substr($emploi['heure_debut'] ?? '00:00', 0, 5)) ?> - <?= htmlspecialchars(substr($emploi['heure_fin'] ?? '00:00', 0, 5)) ?></span>
+                            </td>
+                            <td><?= htmlspecialchars(date('d/m/Y', strtotime($emploi['date_travail']))) ?></td>
+                            <td>
+                                <span class="<?= emploi_badge_class($emploi['statut']) ?>">
+                                    <?= htmlspecialchars($emploi['statut'] === 'termine' ? theme_t('Termine', '?????') : ($emploi['statut'] === 'annule' ? theme_t('Annule', '????') : theme_t('Planifie', '????'))) ?>
+                                </span>
+                            </td>
+                            <td>
+                                <div class="actions">
+                                    <a href="<?= htmlspecialchars(theme_url('VIEW/backoffice/admin-emplois-modifier.php?id=' . $emploi['id_emploi'])) ?>" class="btn btn--warning">
+                                        <i class="fa-solid fa-pen"></i>
+                                        <?= htmlspecialchars(theme_t('Modifier', '?????')) ?>
+                                    </a>
+                                    <a href="<?= htmlspecialchars(theme_url('VIEW/backoffice/admin-emplois-supprimer.php?id=' . $emploi['id_emploi'])) ?>" class="btn btn--danger" onclick="return confirm('<?= htmlspecialchars(theme_t('Supprimer cet emploi ?', '??? ??? ???????')) ?>');">
+                                        <i class="fa-solid fa-trash"></i>
+                                        <?= htmlspecialchars(theme_t('Supprimer', '???')) ?>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
     <?php else: ?>
-    <p style="color:#666;">Aucun emploi trouvé</p>
+        <div class="empty-state">
+            <h3><?= htmlspecialchars(theme_t('Aucun emploi trouve', '?? ???? ?????')) ?></h3>
+            <p><?= htmlspecialchars(theme_t('Ajoutez un planning pour commencer a organiser les affectations.', '??? ????? ????? ?? ????? ?????????.')) ?></p>
+        </div>
     <?php endif; ?>
 </div>
-</body>
-</html>
+<?php theme_render_end(); ?>
 

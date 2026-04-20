@@ -1,135 +1,150 @@
-<?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
+﻿<?php
+require_once __DIR__ . '/../../CONTROLLER/ShiftController.php';
+require_once __DIR__ . '/../../CONTROLLER/EmploiController.php';
+require_once __DIR__ . '/../shared/theme.php';
+
+$shiftController = new ShiftController();
+$emploiController = new EmploiController();
+
+$shifts = $shiftController->getAllShifts();
+$emplois = $emploiController->getAllEmplois();
+$services = $emploiController->getServices();
+
+$actualites = [
+    [
+        'titre' => theme_t('Optimisation des equipes terrain', '????? ????? ?????????'),
+        'date' => '13/04/2026',
+        'extrait' => theme_t('Une meilleure repartition des shifts permet de fluidifier l accueil et les interventions municipales.', '????? ???? ????????? ????? ?? ????? ????????? ????????? ???????.'),
+        'image' => theme_url('assets/images/news/news1.jpg'),
+    ],
+    [
+        'titre' => theme_t('Nouveau suivi des plannings', '?????? ????? ???????'),
+        'date' => '11/04/2026',
+        'extrait' => theme_t('Les responsables disposent maintenant d un tableau central pour suivre les affectations et les statuts.', '???? ??? ????????? ???? ???? ????? ??????? ????????? ????????.'),
+        'image' => theme_url('assets/images/news/news2.jpg'),
+    ],
+    [
+        'titre' => theme_t('Vision moderne du backoffice', '???? ????? ??????? ???????'),
+        'date' => '09/04/2026',
+        'extrait' => theme_t('Le portail adopte une experience plus lisible, rapide et homogene sur mobile et desktop.', '????? ??????? ????? ???? ????? ????? ??????? ??? ?????? ???? ??????.'),
+        'image' => theme_url('assets/images/news/news3.jpg'),
+    ],
+];
+
+theme_render_start([
+    'title' => theme_t('Accueil | Gestion des emplois', '???????? | ????? ???????'),
+    'page_title' => theme_t('Portail de gestion des emplois et shifts', '????? ????? ??????? ??????????'),
+    'page_subtitle' => theme_t('Une interface moderne pour piloter les horaires, les affectations et la coordination de service.', '????? ????? ?????? ??????? ?????????? ?????? ???????.'),
+    'background' => 'video',
+    'show_hero' => false,
+    'nav_context' => 'home',
+    'body_class' => 'home-page',
+    'page_class' => 'page-shell--home',
+    'content_class' => 'content-card--home',
+]);
 ?>
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Gestion Emplois et Shifts</title>
-    <style>
-        *{margin:0;padding:0;box-sizing:border-box;}
-        body{
-            font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background:linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height:100vh;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            padding:20px;
-        }
-        .container{
-            max-width:1000px;
-            width:100%;
-            background:white;
-            padding:40px;
-            border-radius:10px;
-            box-shadow:0 10px 40px rgba(0,0,0,0.3);
-        }
-        h1{
-            color:#005C9E;
-            text-align:center;
-            margin-bottom:10px;
-            font-size:32px;
-        }
-        .subtitle{
-            text-align:center;
-            color:#666;
-            margin-bottom:40px;
-            font-size:14px;
-        }
-        .menu{
-            display:grid;
-            grid-template-columns:1fr 1fr;
-            gap:30px;
-            margin-bottom:40px;
-        }
-        .menu-item{
-            background:linear-gradient(135deg, #005C9E 0%, #003f75 100%);
-            color:white;
-            padding:40px;
-            border-radius:10px;
-            text-align:center;
-            text-decoration:none;
-            transition:all 0.3s ease;
-            box-shadow:0 5px 15px rgba(0,0,0,0.1);
-        }
-        .menu-item:hover{
-            transform:translateY(-5px);
-            box-shadow:0 15px 30px rgba(0,0,0,0.2);
-        }
-        .menu-item h2{
-            margin:0 0 15px 0;
-            font-size:28px;
-        }
-        .menu-item p{
-            margin:0;
-            font-size:14px;
-            opacity:0.9;
-            line-height:1.5;
-        }
-        .info{
-            background:#e3f2fd;
-            padding:20px;
-            border-left:5px solid #005C9E;
-            border-radius:3px;
-            margin-bottom:20px;
-        }
-        .info strong{
-            color:#005C9E;
-        }
-        .footer{
-            text-align:center;
-            color:#999;
-            font-size:12px;
-            margin-top:30px;
-            padding-top:20px;
-            border-top:1px solid #eee;
-        }
-        @media (max-width:768px){
-            .menu{
-                grid-template-columns:1fr;
-            }
-            h1{
-                font-size:24px;
-            }
-        }
-    </style>
-</head>
-<body>
-<div class="container">
-    <h1>🏢 Gestion des Emplois</h1>
-    <div class="subtitle">Plateforme de gestion des horaires et des affectations</div>
-    
-    <div class="info">
-        <strong>ℹ️ Bienvenue !</strong> Utilisez les menus ci-dessous pour gérer les shifts (horaires) et les emplois (affectations des agents).
+<section class="home-hero reveal">
+    <div class="home-hero__inner">
+        <h1><?= htmlspecialchars(theme_t('Services Municipaux Digitalises', 'الخدمات البلدية الرقمية')) ?></h1>
+        <p><?= htmlspecialchars(theme_t('Simplifiez la gestion des shifts et des emplois dans une interface claire et moderne.', 'قم بتبسيط إدارة المناوبات والجداول في واجهة حديثة وواضحة.')) ?></p>
+        <div class="home-hero__actions">
+            <a href="<?= htmlspecialchars(theme_url('VIEW/backoffice/admin-shifts-lister.php')) ?>" class="btn btn--primary">
+                <i class="fa-solid fa-clock"></i>
+                <?= htmlspecialchars(theme_t('Voir Shifts', 'عرض المناوبات')) ?>
+            </a>
+            <a href="<?= htmlspecialchars(theme_url('VIEW/backoffice/admin-emplois-lister.php')) ?>" class="btn btn--ghost home-hero__ghost">
+                <i class="fa-solid fa-calendar-days"></i>
+                <?= htmlspecialchars(theme_t('Voir Emplois', 'عرض الجداول')) ?>
+            </a>
+        </div>
     </div>
-    
-    <div class="menu">
-        <a href="../backoffice/admin-shifts-lister.php" class="menu-item">
-            <h2>⏰</h2>
-            <h2>Shifts</h2>
-            <p>Gérer les horaires et les tranches de travail (Matin, Après-midi, etc.)</p>
+</section>
+
+<div class="home-sections">
+<section class="section-head reveal">
+    <div>
+        <span class="eyebrow"><?= htmlspecialchars(theme_t('Chiffres cles', '????? ??????')) ?></span>
+        <h2><?= htmlspecialchars(theme_t('Vue instantanee de la plateforme', '???? ????? ??? ??????')) ?></h2>
+    </div>
+    <p><?= htmlspecialchars(theme_t('Les compteurs s animent a l apparition pour donner un effet vivant et moderne.', '????? ???????? ??? ?????? ????? ??????? ????? ??????.')) ?></p>
+</section>
+<section class="stats-grid">
+    <article class="stat-card reveal">
+        <div class="stat-value" data-countup="<?= count($shifts) ?>">0</div>
+        <h3><?= htmlspecialchars(theme_t('Shifts actifs', '??????? ????')) ?></h3>
+        <p class="muted"><?= htmlspecialchars(theme_t('Tranches horaires pretes a etre assignees.', '????? ????? ????? ???????.')) ?></p>
+    </article>
+    <article class="stat-card reveal">
+        <div class="stat-value" data-countup="<?= count($emplois) ?>">0</div>
+        <h3><?= htmlspecialchars(theme_t('Emplois planifies', '????? ??????')) ?></h3>
+        <p class="muted"><?= htmlspecialchars(theme_t('Affectations visibles depuis le backoffice.', '??????? ????? ?? ??????? ???????.')) ?></p>
+    </article>
+    <article class="stat-card reveal">
+        <div class="stat-value" data-countup="<?= count($services) ?>">0</div>
+        <h3><?= htmlspecialchars(theme_t('Services disponibles', '????? ?????')) ?></h3>
+        <p class="muted"><?= htmlspecialchars(theme_t('Services actifs relies a la planification.', '????? ????? ?????? ????????.')) ?></p>
+    </article>
+</section>
+
+<section class="section-head reveal">
+    <div>
+        <span class="eyebrow"><?= htmlspecialchars(theme_t('Services', '???????')) ?></span>
+        <h2><?= htmlspecialchars(theme_t('Des modules clairs pour mieux travailler', '????? ????? ????? ??????')) ?></h2>
+    </div>
+</section>
+<section class="features-grid">
+    <article class="feature-card reveal">
+        <div class="feature-icon"><i class="fa-solid fa-clock"></i></div>
+        <h3><?= htmlspecialchars(theme_t('Gestion des shifts', '????? ?????????')) ?></h3>
+        <p class="muted"><?= htmlspecialchars(theme_t('Creation, modification et suppression des horaires avec une presentation plus moderne.', '????? ?????? ???? ???????? ??? ??? ????.')) ?></p>
+    </article>
+    <article class="feature-card reveal">
+        <div class="feature-icon"><i class="fa-solid fa-users-gear"></i></div>
+        <h3><?= htmlspecialchars(theme_t('Affectation des agents', '????? ???????')) ?></h3>
+        <p class="muted"><?= htmlspecialchars(theme_t('Associez agents, services et shifts dans des formulaires harmonises.', '???? ??????? ???????? ?????????? ???? ????? ?????.')) ?></p>
+    </article>
+    <article class="feature-card reveal">
+        <div class="feature-icon"><i class="fa-solid fa-chart-line"></i></div>
+        <h3><?= htmlspecialchars(theme_t('Suivi de l activite', '?????? ??????')) ?></h3>
+        <p class="muted"><?= htmlspecialchars(theme_t('Consultez rapidement les listes et les statuts via des tableaux lisibles.', '?????? ??????? ???????? ????? ?? ???? ????? ?????.')) ?></p>
+    </article>
+</section>
+
+<section class="section-head reveal">
+    <div>
+        <span class="eyebrow"><?= htmlspecialchars(theme_t('Actualites', '?????')) ?></span>
+        <h2><?= htmlspecialchars(theme_t('Trois cartes d information', '???? ?????? ???????')) ?></h2>
+    </div>
+</section>
+<section class="news-grid">
+    <?php foreach ($actualites as $news): ?>
+        <article class="news-card reveal">
+            <div class="news-card__media" style="--card-image: url('<?= htmlspecialchars($news['image']) ?>');"></div>
+            <span class="badge"><?= htmlspecialchars($news['date']) ?></span>
+            <h3><?= htmlspecialchars($news['titre']) ?></h3>
+            <p class="muted"><?= htmlspecialchars($news['extrait']) ?></p>
+        </article>
+    <?php endforeach; ?>
+</section>
+
+<section class="cta-panel reveal" style="margin-top: 24px;">
+    <div class="section-head">
+        <div>
+            <span class="eyebrow"><?= htmlspecialchars(theme_t('Demarrage rapide', '?????? ????')) ?></span>
+            <h2><?= htmlspecialchars(theme_t('Passez directement a la gestion', '????? ?????? ??? ???????')) ?></h2>
+        </div>
+    </div>
+    <div class="hero-actions">
+        <a href="<?= htmlspecialchars(theme_url('VIEW/backoffice/admin-shifts-ajouter.php')) ?>" class="btn btn--primary">
+            <i class="fa-solid fa-plus"></i>
+            <?= htmlspecialchars(theme_t('Ajouter un shift', '????? ??????')) ?>
         </a>
-        <a href="../backoffice/admin-emplois-lister.php" class="menu-item">
-            <h2>📋</h2>
-            <h2>Emplois</h2>
-            <p>Affecter les agents aux services et horaires</p>
+        <a href="<?= htmlspecialchars(theme_url('VIEW/backoffice/admin-emplois-ajouter.php')) ?>" class="btn btn--secondary">
+            <i class="fa-solid fa-plus"></i>
+            <?= htmlspecialchars(theme_t('Ajouter un emploi', '????? ????')) ?>
         </a>
     </div>
-    
-    <div class="info" style="background:#f0f7ff;border-left-color:#FFA500;">
-        <strong style="color:#FFA500;">📌 Instructions :</strong>
-        <ul style="margin-left:20px;margin-top:10px;color:#666;">
-            <li>Commencez par créer les <strong>Shifts</strong> (ex: Matin 08:00-13:00)</li>
-            <li>Puis créer les <strong>Emplois</strong> en affectant les agents</li>
-            <li>Vous pouvez modifier ou supprimer à tout moment</li>
-        </ul>
-    </div>
-    
-    <div class="footer">
-        Système de Gestion Municipal | Version 1.0
-    </div>
+</section>
 </div>
-</body>
-</html>
+<?php theme_render_end(); ?>
+

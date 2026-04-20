@@ -48,6 +48,18 @@ class EmploiController {
     }
     
     function ajouterEmploi($id_agent, $id_service, $id_shift, $date_travail) {
+        $id_agent = filter_var($id_agent, FILTER_VALIDATE_INT, ["options" => ["min_range" => 1]]);
+        $id_service = filter_var($id_service, FILTER_VALIDATE_INT, ["options" => ["min_range" => 1]]);
+        $id_shift = filter_var($id_shift, FILTER_VALIDATE_INT, ["options" => ["min_range" => 1]]);
+        $date_travail = trim((string) $date_travail);
+
+        $dateValide = DateTime::createFromFormat('Y-m-d', $date_travail);
+        $isDateFormatOk = $dateValide && $dateValide->format('Y-m-d') === $date_travail;
+
+        if ($id_agent === false || $id_service === false || $id_shift === false || !$isDateFormatOk) {
+            return false;
+        }
+
         $sql = "INSERT INTO emplois (id_agent, id_service, id_shift, date_travail, statut) 
                 VALUES (:id_agent, :id_service, :id_shift, :date_travail, 'planifie')";
         $db = Config::getConnexion();

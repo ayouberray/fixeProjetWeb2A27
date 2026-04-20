@@ -1,69 +1,79 @@
 ﻿<?php
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-require_once __DIR__."/../../CONTROLLER/ShiftController.php";
+require_once __DIR__ . '/../../CONTROLLER/ShiftController.php';
+require_once __DIR__ . '/../shared/theme.php';
+
 $ctrl = new ShiftController();
 $shifts = $ctrl->getAllShifts();
+
+theme_render_start([
+    'title' => theme_t('Gestion des shifts', '????? ?????????'),
+    'page_title' => theme_t('Gestion des shifts', '????? ?????????'),
+    'page_subtitle' => theme_t('Retrouvez tous les horaires dans un tableau harmonise avec actions rapides.', '???? ??? ?? ???????? ???? ???? ???? ?? ??????? ?????.'),
+    'nav_context' => 'shifts',
+]);
 ?>
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>Shifts</title>
-    <style>
-        body{font-family:Arial;padding:20px;background:#f5f5f5;}
-        .container{max-width:1000px;margin:0 auto;background:white;padding:20px;border-radius:5px;box-shadow:0 0 10px rgba(0,0,0,0.1);}
-        h1{color:#005C9E;}
-        table{border-collapse:collapse;width:100%;margin-top:20px;}
-        th,td{border:1px solid #ddd;padding:10px;text-align:left;}
-        th{background:#005C9E;color:white;}
-        tr:hover{background:#f9f9f9;}
-        .btn{display:inline-block;padding:5px 10px;color:white;text-decoration:none;border-radius:3px;margin-right:5px;font-size:12px;}
-        .btn-add{background:#005C9E;padding:10px 15px;font-size:14px;}
-        .btn-edit{background:#FFA500;}
-        .btn-delete{background:#e31e24;}
-        .btn-edit:hover{background:#FF8C00;}
-        .btn-delete:hover{background:#c41a1f;}
-    </style>
-</head>
-<body>
-<div class="container">
-    <h1>⏰ Gestion des Shifts (Horaires)</h1>
-    <a href="admin-shifts-ajouter.php" class="btn btn-add">+ Ajouter un Shift</a>
-    <br><br>
-    
-    <?php if(!empty($shifts)): ?>
-    <table>
-        <tr>
-            <th>ID</th>
-            <th>Nom</th>
-            <th>Heure Début</th>
-            <th>Heure Fin</th>
-            <th>Durée</th>
-            <th>Actions</th>
-        </tr>
-        <?php foreach($shifts as $s): 
-            $debut = new DateTime($s['heure_debut']);
-            $fin = new DateTime($s['heure_fin']);
-            $diff = $fin->diff($debut);
-            $duree = $diff->h.'h '.$diff->i.'min';
-        ?>
-        <tr>
-            <td><?= $s['id_shift'] ?></td>
-            <td><?= htmlspecialchars($s['nom_shift']) ?></td>
-            <td><?= substr($s['heure_debut'],0,5) ?></td>
-            <td><?= substr($s['heure_fin'],0,5) ?></td>
-            <td><?= $duree ?></td>
-            <td>
-                <a href="admin-shifts-modifier.php?id=<?= $s['id_shift'] ?>" class="btn btn-edit">Modifier</a>
-                <a href="admin-shifts-supprimer.php?id=<?= $s['id_shift'] ?>" class="btn btn-delete" onclick="return confirm('Supprimer ?')">Supprimer</a>
-            </td>
-        </tr>
-        <?php endforeach; ?>
-    </table>
+<div class="table-panel">
+    <div class="panel-toolbar">
+        <div>
+            <span class="eyebrow"><?= htmlspecialchars(theme_t('Backoffice', '???????')) ?></span>
+            <h2><?= htmlspecialchars(theme_t('Liste des shifts', '????? ?????????')) ?></h2>
+        </div>
+        <a href="<?= htmlspecialchars(theme_url('VIEW/backoffice/admin-shifts-ajouter.php')) ?>" class="btn btn--primary">
+            <i class="fa-solid fa-plus"></i>
+            <?= htmlspecialchars(theme_t('Ajouter un shift', '????? ??????')) ?>
+        </a>
+    </div>
+
+    <?php if (!empty($shifts)): ?>
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th><?= htmlspecialchars(theme_t('Nom', '?????')) ?></th>
+                        <th><?= htmlspecialchars(theme_t('Heure debut', '??? ???????')) ?></th>
+                        <th><?= htmlspecialchars(theme_t('Heure fin', '??? ???????')) ?></th>
+                        <th><?= htmlspecialchars(theme_t('Duree', '?????')) ?></th>
+                        <th><?= htmlspecialchars(theme_t('Actions', '?????????')) ?></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($shifts as $shift): ?>
+                        <?php
+                        $debut = new DateTime($shift['heure_debut']);
+                        $fin = new DateTime($shift['heure_fin']);
+                        $diff = $fin->diff($debut);
+                        $duree = $diff->h . 'h ' . $diff->i . 'min';
+                        ?>
+                        <tr>
+                            <td><?= (int) $shift['id_shift'] ?></td>
+                            <td><strong><?= htmlspecialchars($shift['nom_shift']) ?></strong></td>
+                            <td><?= htmlspecialchars(substr($shift['heure_debut'], 0, 5)) ?></td>
+                            <td><?= htmlspecialchars(substr($shift['heure_fin'], 0, 5)) ?></td>
+                            <td><span class="badge"><?= htmlspecialchars($duree) ?></span></td>
+                            <td>
+                                <div class="actions">
+                                    <a href="<?= htmlspecialchars(theme_url('VIEW/backoffice/admin-shifts-modifier.php?id=' . $shift['id_shift'])) ?>" class="btn btn--warning">
+                                        <i class="fa-solid fa-pen"></i>
+                                        <?= htmlspecialchars(theme_t('Modifier', '?????')) ?>
+                                    </a>
+                                    <a href="<?= htmlspecialchars(theme_url('VIEW/backoffice/admin-shifts-supprimer.php?id=' . $shift['id_shift'])) ?>" class="btn btn--danger" onclick="return confirm('<?= htmlspecialchars(theme_t('Supprimer ce shift ?', '??? ??? ?????????')) ?>');">
+                                        <i class="fa-solid fa-trash"></i>
+                                        <?= htmlspecialchars(theme_t('Supprimer', '???')) ?>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
     <?php else: ?>
-    <p style="color:#666;">Aucun shift trouvé</p>
+        <div class="empty-state">
+            <h3><?= htmlspecialchars(theme_t('Aucun shift trouve', '?? ???? ???????')) ?></h3>
+            <p><?= htmlspecialchars(theme_t('Commencez par ajouter votre premier horaire.', '???? ?????? ??? ?????.')) ?></p>
+        </div>
     <?php endif; ?>
 </div>
-</body>
-</html>
+<?php theme_render_end(); ?>
+
