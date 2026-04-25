@@ -1,113 +1,125 @@
 <?php
-session_start();
-if(!isset($_SESSION['role']) || $_SESSION['role'] != 'admin') {
-    header("Location: ../../../login.php");
-    exit();
-}
+require_once __DIR__ . "/../../../CONTROLLER/ReponseController.php";
+require_once __DIR__ . "/../../../CONTROLLER/ReclamationController.php";
+require_once __DIR__ . "/../../../MODEL/config.php";
 
-require_once "../../../CONTROLLER/ReponseController.php";
-require_once "../../../CONTROLLER/ReclamationController.php";
-require_once "../../../MODEL/Reponse.php";
-
-$ctrl = new ReponseController();
+$id_reclamation = $_GET['id_reclamation'] ?? 0;
 $recCtrl = new ReclamationController();
+$reclamation = $recCtrl->getReclamationById($id_reclamation);
 
-$id_rec = $_GET['id_rec'] ?? 0;
-$reclamation = $recCtrl->getReclamationById($id_rec);
-
-if(!$reclamation) {
-    header("Location: ../reclamation/lister.php");
+if(!$reclamation){
+    header("Location: ../RECLAMATION/lister.php");
     exit();
 }
 
-$error = "";
-$success = "";
+$error = ""; $success = "";
 
-if($_SERVER["REQUEST_METHOD"] == "POST") {
-    $reponse = new Reponse(
-        $id_rec,
-        $_SESSION['user_nom'] ?? 'Admin',
-        $_POST['contenu'],
-        $_POST['type_reponse'],
-        $_POST['service_agent'] ?? null,
-        $_POST['decision'] ?? null
-    );
+if($_SERVER["REQUEST_METHOD"] == "POST"){
+    $ctrl = new ReponseController();
+    $nom_agent = $_POST['nom_agent'];
+    $service_agent = $_POST['service_agent'] ?? null;
+    $type_reponse = $_POST['type_reponse'];
+    $contenu = $_POST['contenu'];
+    $decision = $_POST['decision'] ?? null;
     
-    if($ctrl->ajouterReponse($reponse)) {
-        // Mettre à jour le statut de la réclamation
-        $recCtrl->modifierStatut($id_rec, 'traitee');
-        $success = "Réponse ajoutée avec succès";
+    if(!empty($nom_agent) && !empty($contenu)){
+        $reponse = new Reponse($id_reclamation, $nom_agent, $type_reponse, $contenu, $service_agent, $decision);
+        $result = $ctrl->ajouterReponse($reponse);
+        if($result){ 
+            $success = "Réponse envoyée avec succès !";
+        } else { 
+            $error = "Erreur lors de l'envoi de la réponse"; 
+        }
     } else {
-        $error = "Erreur lors de l'ajout de la réponse";
+        $error = "Veuillez remplir tous les champs obligatoires";
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <title>Répondre à la réclamation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="../../../assets/css/style.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'DM Sans', sans-serif; background: #F5F7FA; }
+        .admin-sidebar { position: fixed; left: 0; top: 0; width: 280px; height: 100vh; background: linear-gradient(180deg, #0D3328 0%, #0A281E 100%); color: white; z-index: 100; }
+        .sidebar-header { padding: 24px 20px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .logo-mini { display: flex; align-items: center; gap: 10px; font-size: 20px; font-weight: 700; }
+        .sidebar-nav { padding: 20px 16px; }
+        .sidebar-link { display: flex; align-items: center; gap: 12px; padding: 12px 16px; color: rgba(255,255,255,0.7); text-decoration: none; border-radius: 12px; transition: all 0.3s; }
+        .sidebar-link.active { background: #006D5B; color: white; }
+        .admin-main { margin-left: 280px; padding: 24px; }
+        .card { background: white; border-radius: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); padding: 24px; }
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; margin-bottom: 8px; font-weight: 500; }
+        .form-control { width: 100%; padding: 12px; border: 1px solid #D1D5DB; border-radius: 8px; }
+        .btn { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 500; }
+        .btn-primary { background: #006D5B; color: white; }
+        .alert { padding: 12px; border-radius: 8px; margin-bottom: 20px; }
+        .alert-success { background: #D1FAE5; color: #065F46; }
+        .alert-danger { background: #FEE2E2; color: #991B1B; }
+        .reclamation-info { background: #F9FAFB; padding: 15px; border-radius: 10px; margin-bottom: 25px; border-left: 4px solid #006D5B; }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <div class="card" style="max-width: 700px; margin: 0 auto;">
-            <div class="header">
-                <div class="header-icon">
-                    <i class="fas fa-reply"></i>
-                </div>
-                <h1>Répondre à la réclamation</h1>
-                <p>Réf: <?= htmlspecialchars($reclamation['reference']) ?></p>
+
+<div style="display: flex;">
+    <aside class="admin-sidebar">
+        <div class="sidebar-header"><div class="logo-mini"><i class="fas fa-building"></i><span>InnoGov</span></div></div>
+        <nav class="sidebar-nav">
+            <a href="../RECLAMATION/lister.php" class="sidebar-link active"><i class="fas fa-comment-dots"></i><span>Réclamations</span></a>
+            <a href="lister.php" class="sidebar-link"><i class="fas fa-reply"></i><span>Réponses</span></a>
+        </nav>
+    </aside>
+    
+    <main class="admin-main">
+        <div class="card">
+            <h2 style="margin-bottom: 20px;">Répondre à la réclamation #<?= htmlspecialchars($reclamation['reference']) ?></h2>
+            
+            <div class="reclamation-info">
+                <p><strong>Objet :</strong> <?= htmlspecialchars($reclamation['objet']) ?></p>
+                <p><strong>Description :</strong> <?= nl2br(htmlspecialchars($reclamation['description'])) ?></p>
             </div>
             
-            <div style="background: rgba(255,255,255,0.05); border-radius: 15px; padding: 15px; margin-bottom: 20px;">
-                <p><strong>Objet:</strong> <?= htmlspecialchars($reclamation['objet']) ?></p>
-                <p><strong>Citoyen:</strong> <?= htmlspecialchars($reclamation['prenom'] . ' ' . $reclamation['nom']) ?></p>
-                <p><strong>Description:</strong> <?= nl2br(htmlspecialchars(substr($reclamation['description'], 0, 200))) ?>...</p>
-            </div>
+            <?php if($error): ?><div class="alert alert-danger"><?= $error ?></div><?php endif; ?>
+            <?php if($success): ?><div class="alert alert-success"><?= $success ?></div><?php endif; ?>
             
-            <?php if($success): ?>
-                <div class="alert alert-success"><?= $success ?></div>
-            <?php endif; ?>
-            <?php if($error): ?>
-                <div class="alert alert-error"><?= $error ?></div>
-            <?php endif; ?>
-            
-            <form method="POST">
-                <div class="grid-2">
-                    <div class="form-group">
-                        <label><i class="fas fa-tag"></i> Type de réponse</label>
-                        <select name="type_reponse" required>
-                            <option value="information">Information</option>
-                            <option value="resolution">Résolution</option>
-                            <option value="rejet">Rejet</option>
-                            <option value="renvoi">Renvoi</option>
-                            <option value="cloture">Clôture</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label><i class="fas fa-building"></i> Service agent</label>
-                        <input type="text" name="service_agent" placeholder="Votre service">
-                    </div>
-                </div>
-                
+            <form method="POST" id="reponseForm">
                 <div class="form-group">
-                    <label><i class="fas fa-align-left"></i> Contenu de la réponse *</label>
-                    <textarea name="contenu" rows="6" placeholder="Votre réponse détaillée..." required></textarea>
+                    <label class="form-label">Nom de l'agent *</label>
+                    <input type="text" name="nom_agent" id="nom_agent" class="form-control" required>
                 </div>
-                
                 <div class="form-group">
-                    <label><i class="fas fa-gavel"></i> Décision (optionnel)</label>
-                    <textarea name="decision" rows="3" placeholder="Décision prise concernant cette réclamation..."></textarea>
+                    <label class="form-label">Service de l'agent</label>
+                    <input type="text" name="service_agent" class="form-control">
                 </div>
-                
-                <div style="display: flex; gap: 15px;">
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane"></i> Envoyer la réponse</button>
-                    <a href="../reclamation/details.php?id=<?= $id_rec ?>" class="btn btn-secondary"><i class="fas fa-arrow-left"></i> Retour</a>
+                <div class="form-group">
+                    <label class="form-label">Type de réponse</label>
+                    <select name="type_reponse" class="form-control">
+                        <option value="information">Information</option>
+                        <option value="rejet">Rejet</option>
+                        <option value="cloture">Clôture</option>
+                    </select>
                 </div>
+                <div class="form-group">
+                    <label class="form-label">Contenu de la réponse *</label>
+                    <textarea name="contenu" id="contenu" class="form-control" rows="6" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Décision (optionnel)</label>
+                    <input type="text" name="decision" class="form-control">
+                </div>
+                <button type="submit" class="btn btn-primary">Envoyer la réponse</button>
+                <a href="../RECLAMATION/lister.php" style="margin-left: 10px; text-decoration: none; color: #6B7280;">Annuler</a>
             </form>
         </div>
-    </div>
+    </main>
+</div>
+
+<script src="../../../ASSETS/JS/script.js"></script>
 </body>
 </html>
