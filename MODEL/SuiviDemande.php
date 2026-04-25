@@ -1,6 +1,5 @@
 <?php
-// MODEL/SuiviDemande.php
-// Classe pour la gestion du suivi des demandes
+
 
 require_once __DIR__ . '/config.php';
 
@@ -18,9 +17,7 @@ class SuiviDemande {
         $this->pdo = Config::getConnexion();
     }
     
-    // ============================================
-    // GETTERS ET SETTERS (sans typage strict)
-    // ============================================
+    
     public function setIdDemande($id) { $this->id_demande = $id; }
     public function setIdAgent($id) { $this->id_agent = $id; }
     public function setAncienStatut($statut) { $this->ancien_statut = $statut; }
@@ -33,9 +30,7 @@ class SuiviDemande {
     public function getNouveauStatut() { return $this->nouveau_statut; }
     public function getCommentaire() { return $this->commentaire; }
     
-    // ============================================
-    // AJOUTER UN SUIVI
-    // ============================================
+    
     public function ajouter($id_demande, $ancien_statut, $nouveau_statut, $commentaire, $id_agent = null) {
         $sql = "INSERT INTO suivi_demandes 
                 (id_demande, id_agent, ancien_statut, nouveau_statut, commentaire, date_changement) 
@@ -51,9 +46,7 @@ class SuiviDemande {
         ]);
     }
     
-    // ============================================
-    // RÉCUPÉRER L'HISTORIQUE D'UNE DEMANDE
-    // ============================================
+    
     public function getHistorique($id_demande) {
         $sql = "SELECT s.*, 
                        u.nom as agent_nom,
@@ -70,9 +63,7 @@ class SuiviDemande {
         return $stmt->fetchAll();
     }
     
-    // ============================================
-    // RÉCUPÉRER UNE DEMANDE COMPLÈTE
-    // ============================================
+    
     public function getDemandeComplete($id_demande, $id_citoyen) {
         $sql = "SELECT d.*, 
                        s.nom_service,
@@ -93,9 +84,7 @@ class SuiviDemande {
         return $stmt->fetch();
     }
     
-    // ============================================
-    // CALCULER LE DÉLAI DE TRAITEMENT
-    // ============================================
+    
     public function getDelaiTraitement($demande) {
         if (isset($demande['statut']) && $demande['statut'] == 'traite' && !empty($demande['date_modification'])) {
             $date_creation = new DateTime($demande['date_creation']);
@@ -106,9 +95,7 @@ class SuiviDemande {
         return null;
     }
     
-    // ============================================
-    // SUPPRIMER LES SUIVIS D'UNE DEMANDE
-    // ============================================
+    
     public function supprimerParDemande($id_demande) {
         $sql = "DELETE FROM suivi_demandes WHERE id_demande = :id_demande";
         $stmt = $this->pdo->prepare($sql);

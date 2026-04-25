@@ -1,9 +1,8 @@
 <?php
-// MODEL/Demande.php
-// Classe métier pour la gestion des demandes
+
 
 class Demande {
-    // Propriétés
+    
     private ?int $id_demande;
     private ?int $id_citoyen;
     private ?int $id_service;
@@ -14,9 +13,7 @@ class Demande {
     private ?string $date_creation;
     private ?string $date_modification;
     
-    // ============================================
-    // CONSTRUCTEUR
-    // ============================================
+    
     public function __construct(
         $id_demande = null,
         $titre = "",
@@ -38,9 +35,7 @@ class Demande {
         $this->date_modification = null;
     }
     
-    // ============================================
-    // SETTERS
-    // ============================================
+    
     public function setIdDemande($id) {
         $this->id_demande = $id;
     }
@@ -77,9 +72,7 @@ class Demande {
         $this->date_modification = $date;
     }
     
-    // ============================================
-    // GETTERS
-    // ============================================
+    
     public function getIdDemande() {
         return $this->id_demande;
     }
@@ -116,9 +109,7 @@ class Demande {
         return $this->date_modification;
     }
     
-    // ============================================
-    // MÉTHODES D'AFFICHAGE
-    // ============================================
+ 
     public function afficherInfo() {
         echo "ID Demande : " . $this->id_demande . "<br>";
         echo "Titre : " . $this->titre . "<br>";
@@ -130,9 +121,7 @@ class Demande {
         echo "Date création : " . $this->date_creation . "<br>";
     }
     
-    // ============================================
-    // MÉTHODES UTILITAIRES
-    // ============================================
+    
     public function toArray() {
         return [
             'id_demande' => $this->id_demande,

@@ -13,14 +13,13 @@ class SuiviDemandeController {
         $this->checkAuth();
     }
     
-    // ============================================
-    // MÉTHODE SHOW - Afficher le suivi d'une demande
-    // ============================================
+    
     public function show($id) {
         $user_id = $_SESSION['user_id'];
+        $user_role = $_SESSION['user_role'] ?? 'citoyen';
         
-        // Récupérer la demande complète
-        $demande = $this->getDemandeComplete($id, $user_id);
+        // ✅ Récupérer la demande (admin voit tout, citoyen voit seulement ses demandes)
+        $demande = $this->getDemandeComplete($id, $user_id, $user_role);
         
         if (!$demande) {
             header('Location: index.php?error=Demande introuvable');
@@ -40,38 +39,56 @@ class SuiviDemandeController {
         ];
     }
     
-    // ============================================
-    // RÉCUPÉRER UNE DEMANDE COMPLÈTE
-    // ============================================
-    private function getDemandeComplete($id_demande, $id_citoyen) {
-        $sql = "SELECT d.*, 
-                       s.nom_service,
-                       s.description as service_description,
-                       DATEDIFF(NOW(), d.date_creation) as jours_ecoules,
-                       DATE_FORMAT(d.date_creation, '%d/%m/%Y') as date_creation_format,
-                       DATE_FORMAT(d.date_creation, '%H:%i') as heure_creation,
-                       DATE_FORMAT(d.date_modification, '%d/%m/%Y') as date_modification_format
-                FROM demandes d
-                LEFT JOIN services s ON d.id_service = s.id_service
-                WHERE d.id_demande = :id_demande AND d.id_citoyen = :id_citoyen";
-        
+  
+    private function getDemandeComplete($id_demande, $id_citoyen, $user_role = 'citoyen') {
         $db = Config::getConnexion();
         
-        try {
+        // ✅ Si admin, pas de filtre par id_citoyen
+        if ($user_role === 'admin') {
+            $sql = "SELECT d.*, 
+                           s.nom_service,
+                           s.description as service_description,
+                           c.nom as citoyen_nom,
+                           c.prenom as citoyen_prenom,
+                           DATEDIFF(NOW(), d.date_creation) as jours_ecoules,
+                           DATE_FORMAT(d.date_creation, '%d/%m/%Y') as date_creation_format,
+                           DATE_FORMAT(d.date_creation, '%H:%i') as heure_creation,
+                           DATE_FORMAT(d.date_modification, '%d/%m/%Y') as date_modification_format
+                    FROM demandes d
+                    LEFT JOIN services s ON d.id_service = s.id_service
+                    LEFT JOIN citoyens c ON d.id_citoyen = c.id_citoyen
+                    WHERE d.id_demande = :id_demande";
+            
+            $req = $db->prepare($sql);
+            $req->execute([':id_demande' => $id_demande]);
+        } else {
+            // Citoyen : filtrer par id_citoyen
+            $sql = "SELECT d.*, 
+                           s.nom_service,
+                           s.description as service_description,
+                           DATEDIFF(NOW(), d.date_creation) as jours_ecoules,
+                           DATE_FORMAT(d.date_creation, '%d/%m/%Y') as date_creation_format,
+                           DATE_FORMAT(d.date_creation, '%H:%i') as heure_creation,
+                           DATE_FORMAT(d.date_modification, '%d/%m/%Y') as date_modification_format
+                    FROM demandes d
+                    LEFT JOIN services s ON d.id_service = s.id_service
+                    WHERE d.id_demande = :id_demande AND d.id_citoyen = :id_citoyen";
+            
             $req = $db->prepare($sql);
             $req->execute([
                 ':id_demande' => $id_demande,
                 ':id_citoyen' => $id_citoyen
             ]);
+        }
+        
+        try {
             return $req->fetch();
         } catch(Exception $e) {
             return null;
         }
     }
     
-    // ============================================
-    // RÉCUPÉRER L'HISTORIQUE DE SUIVI
-    // ============================================
+   
     private function getHistorique($id_demande) {
         $sql = "SELECT s.*, 
                        u.nom as agent_nom,
@@ -94,9 +111,7 @@ class SuiviDemandeController {
         }
     }
     
-    // ============================================
-    // CALCULER LE DÉLAI DE TRAITEMENT
-    // ============================================
+  
     private function getDelaiTraitement($demande) {
         if ($demande['statut'] == 'traite' && $demande['date_modification']) {
             $date_creation = new DateTime($demande['date_creation']);
@@ -107,9 +122,7 @@ class SuiviDemandeController {
         return null;
     }
     
-    // ============================================
-    // AJOUTER UN SUIVI
-    // ============================================
+    
     public function ajouterSuivi($id_demande, $ancien_statut, $nouveau_statut, $commentaire, $id_agent = null) {
         $sql = "INSERT INTO suivi_demandes 
                 (id_demande, id_agent, ancien_statut, nouveau_statut, commentaire, date_changement) 
@@ -132,19 +145,18 @@ class SuiviDemandeController {
         }
     }
     
-    // ============================================
-    // VÉRIFICATION AUTHENTIFICATION
-    // ============================================
+    
     private function checkAuth() {
         if (session_status() === PHP_SESSION_NONE) {
             session_start();
         }
         
         if (!isset($_SESSION['user_id'])) {
-            $_SESSION['user_id'] = 2;
-            $_SESSION['user_nom'] = 'Ben Ali';
-            $_SESSION['user_prenom'] = 'Mohamed';
-            $_SESSION['user_role'] = 'citoyen';
+            // Par défaut, connecter en tant qu'admin pour le backoffice
+            $_SESSION['user_id'] = 1;
+            $_SESSION['user_nom'] = 'Administrateur';
+            $_SESSION['user_prenom'] = 'Admin';
+            $_SESSION['user_role'] = 'admin';
         }
     }
 }
