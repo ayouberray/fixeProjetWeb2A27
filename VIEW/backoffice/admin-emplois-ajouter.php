@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 require_once __DIR__ . '/../../CONTROLLER/EmploiController.php';
 require_once __DIR__ . '/../shared/theme.php';
 
