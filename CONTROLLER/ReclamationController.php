@@ -212,5 +212,23 @@ class ReclamationController{
             'rejetee' => $rejetee['total']
         ];
     }
+
+    // ========== NOUVELLE MÉTHODE ==========
+    public function modifierStatut($id_reclamation, $nouveau_statut) {
+        $sql = "UPDATE reclamation SET statut = :statut, date_modification = NOW() WHERE id_reclamation = :id_reclamation";
+        $db = Config::getConnexion();
+
+        try {
+            $req = $db->prepare($sql);
+            $req->execute([
+                ':statut' => $nouveau_statut,
+                ':id_reclamation' => $id_reclamation
+            ]);
+            return true;
+        } catch (Exception $e) {
+            error_log("Erreur modifierStatut: " . $e->getMessage());
+            return false;
+        }
+    }
 }
 ?>

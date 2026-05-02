@@ -4,9 +4,10 @@ require_once __DIR__ . "/../MODEL/Reponse.php";
 
 class ReponseController {
 
+    // Ajouter une réponse (Admin)
     public function ajouterReponse($reponse) {
-        $sql = "INSERT INTO reponse (id_reclamation, nom_agent, service_agent, type_reponse, contenu, decision, date_reponse) 
-                VALUES (:id_reclamation, :nom_agent, :service_agent, :type_reponse, :contenu, :decision, NOW())";
+        $sql = "INSERT INTO reponse (id_reclamation, nom_agent, service_agent, type_reponse, contenu, decision, date_reponse, envoyeur) 
+                VALUES (:id_reclamation, :nom_agent, :service_agent, :type_reponse, :contenu, :decision, NOW(), 'admin')";
         $db = Config::getConnexion();
 
         try {
@@ -43,6 +44,26 @@ class ReponseController {
         }
     }
 
+    // Ajouter une réponse depuis le frontoffice (citoyen)
+    public function ajouterReponseCitoyen($id_reclamation, $contenu) {
+        $sql = "INSERT INTO reponse (id_reclamation, nom_agent, service_agent, type_reponse, contenu, decision, date_reponse, envoyeur) 
+                VALUES (:id_reclamation, 'Citoyen', NULL, 'information', :contenu, NULL, NOW(), 'citoyen')";
+        $db = Config::getConnexion();
+
+        try {
+            $req = $db->prepare($sql);
+            $req->execute([
+                ':id_reclamation' => $id_reclamation,
+                ':contenu' => $contenu
+            ]);
+            return true;
+        } catch (Exception $e) {
+            error_log("Erreur ajout réponse citoyen: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    // Modifier une réponse
     public function modifierReponse($id_reponse, $contenu, $type_reponse, $decision = null) {
         $sql = "UPDATE reponse SET contenu = :contenu, type_reponse = :type_reponse, decision = :decision, date_reponse = NOW() 
                 WHERE id_reponse = :id_reponse";
@@ -62,6 +83,7 @@ class ReponseController {
         }
     }
 
+    // Récupérer une réponse par ID
     public function getReponseById($id_reponse) {
         $sql = "SELECT r.*, rec.reference as ref_reclamation, rec.objet as objet_reclamation 
                 FROM reponse r 
@@ -79,6 +101,7 @@ class ReponseController {
         }
     }
 
+    // Récupérer TOUTES les réponses (pour le backoffice)
     public function getAllReponses() {
         $sql = "SELECT r.*, rec.reference as ref_reclamation, rec.objet as objet_reclamation 
                 FROM reponse r 
@@ -87,13 +110,15 @@ class ReponseController {
         $db = Config::getConnexion();
 
         try {
-            return $db->query($sql)->fetchAll();
+            $req = $db->query($sql);
+            return $req->fetchAll();
         } catch (Exception $e) {
             error_log("Erreur getAllReponses: " . $e->getMessage());
             return [];
         }
     }
 
+    // Récupérer les réponses d'une réclamation spécifique
     public function getReponsesByReclamation($id_reclamation) {
         $sql = "SELECT * FROM reponse WHERE id_reclamation = :id_reclamation ORDER BY date_reponse ASC";
         $db = Config::getConnexion();
@@ -108,6 +133,7 @@ class ReponseController {
         }
     }
 
+    // Supprimer une réponse
     public function supprimerReponse($id_reponse) {
         $sql = "DELETE FROM reponse WHERE id_reponse = :id_reponse";
         $db = Config::getConnexion();

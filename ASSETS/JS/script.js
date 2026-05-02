@@ -1,5 +1,5 @@
 // ============================================
-// INNOGOV - SCRIPT COMPLET AVEC VALIDATION
+// INNOGOV - SCRIPT COMPLET
 // ============================================
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -24,77 +24,30 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ========== 3. SCROLL REVEAL ==========
-    const revealElements = document.querySelectorAll('.reveal');
-
-    function checkReveal() {
-        revealElements.forEach(element => {
-            const elementTop = element.getBoundingClientRect().top;
-            const windowHeight = window.innerHeight;
-            if (elementTop < windowHeight - 100) {
-                element.classList.add('active');
-            }
-        });
-    }
-    if (revealElements.length > 0) {
-        checkReveal();
-        window.addEventListener('scroll', checkReveal);
-    }
-
-    // ========== 4. SLIDESHOW ==========
+    // ========== 3. SLIDESHOW AUTOMATIQUE (pour frontoffice) ==========
     const slides = document.querySelectorAll('.hero-slideshow .slide');
     if (slides.length > 0) {
         let currentSlide = 0;
-
+        
         function showSlide(index) {
             slides.forEach((slide, i) => {
                 slide.classList.remove('active');
-                if (i === index) slide.classList.add('active');
+                if (i === index) {
+                    slide.classList.add('active');
+                }
             });
         }
-
+        
         function nextSlide() {
             currentSlide = (currentSlide + 1) % slides.length;
             showSlide(currentSlide);
         }
-        setInterval(nextSlide, 5000);
+        
+        // Changer toutes les 3 secondes (3000ms)
+        setInterval(nextSlide, 3000);
     }
 
-    // ========== 5. COMPTEURS ANIMÉS ==========
-    const statNumbers = document.querySelectorAll('.stat-card .number, .hero-stats .stat-number');
-
-    function animateNumber(element) {
-        const target = parseInt(element.getAttribute('data-target'));
-        if (isNaN(target)) return;
-        let current = 0;
-        const increment = target / 50;
-        const timer = setInterval(() => {
-            current += increment;
-            if (current >= target) {
-                element.textContent = target;
-                clearInterval(timer);
-            } else {
-                element.textContent = Math.floor(current);
-            }
-        }, 30);
-    }
-    const statsObserver = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-            if (entry.isIntersecting) {
-                const numberElement = entry.target.querySelector('.number') || entry.target;
-                if (numberElement && !numberElement.classList.contains('animated')) {
-                    numberElement.classList.add('animated');
-                    animateNumber(numberElement);
-                }
-                statsObserver.unobserve(entry.target);
-            }
-        });
-    }, { threshold: 0.5 });
-    document.querySelectorAll('.stat-card, .hero-stats .stat').forEach(stat => {
-        statsObserver.observe(stat);
-    });
-
-    // ========== 6. TOAST NOTIFICATION ==========
+    // ========== 4. TOAST NOTIFICATION ==========
     window.showNotification = function(message, type = 'success') {
         const oldNotifications = document.querySelectorAll('.toast-notification');
         oldNotifications.forEach(notif => notif.remove());
@@ -136,20 +89,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     };
 
-    // ========== 7. VALIDATION DU FORMULAIRE DE RÉCLAMATION ==========
-    window.initReclamationValidation = function() {
-        const form = document.getElementById('reclamationForm');
-        if (!form) return;
-
+    // ========== 5. VALIDATION DU FORMULAIRE DE RÉCLAMATION (FRONTOFFICE) ==========
+    const reclamationForm = document.getElementById('reclamationForm');
+    if (reclamationForm) {
         const categorie = document.getElementById('categorie');
         const objet = document.getElementById('objet');
         const description = document.getElementById('description');
         const submitBtn = document.getElementById('submitBtn');
 
-        function validateField(field, validationFn, errorId) {
-            const isValid = validationFn(field.value);
+        // Fonction pour afficher/masquer les erreurs
+        function showFieldError(field, errorId, isValid) {
             const errorDiv = document.getElementById(errorId);
-
             if (!isValid) {
                 field.classList.add('error');
                 if (errorDiv) errorDiv.classList.add('show');
@@ -161,63 +111,108 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
 
-        const validators = {
-            categorie: (value) => value !== '',
-            objet: (value) => value.trim().length >= 5,
-            description: (value) => value.trim().length >= 20
-        };
-
-        function validateAll() {
-            const isCategorieValid = validateField(categorie, validators.categorie, 'categorieError');
-            const isObjetValid = validateField(objet, validators.objet, 'objetError');
-            const isDescriptionValid = validateField(description, validators.description, 'descriptionError');
-            return isCategorieValid && isObjetValid && isDescriptionValid;
+        // Validation en temps réel
+        if (categorie) {
+            categorie.addEventListener('change', function() {
+                const isValid = this.value !== '';
+                showFieldError(this, 'categorieError', isValid);
+            });
         }
 
-        if (categorie) categorie.addEventListener('change', () => validateField(categorie, validators.categorie, 'categorieError'));
-        if (objet) objet.addEventListener('input', () => validateField(objet, validators.objet, 'objetError'));
-        if (description) description.addEventListener('input', () => validateField(description, validators.description, 'descriptionError'));
+        if (objet) {
+            objet.addEventListener('input', function() {
+                const isValid = this.value.trim().length >= 5;
+                showFieldError(this, 'objetError', isValid);
+            });
+        }
 
-        form.addEventListener('submit', function(e) {
-            if (!validateAll()) {
+        if (description) {
+            description.addEventListener('input', function() {
+                const isValid = this.value.trim().length >= 20;
+                showFieldError(this, 'descriptionError', isValid);
+            });
+        }
+
+        // Validation avant soumission
+        reclamationForm.addEventListener('submit', function(e) {
+            let isValid = true;
+
+            if (categorie && !categorie.value) {
+                showFieldError(categorie, 'categorieError', false);
+                isValid = false;
+            }
+
+            if (objet && objet.value.trim().length < 5) {
+                showFieldError(objet, 'objetError', false);
+                isValid = false;
+            }
+
+            if (description && description.value.trim().length < 20) {
+                showFieldError(description, 'descriptionError', false);
+                isValid = false;
+            }
+
+            if (!isValid) {
                 e.preventDefault();
-                showNotification('Veuillez corriger les erreurs dans le formulaire', 'error');
+                window.showNotification('Veuillez corriger les erreurs dans le formulaire', 'error');
                 return false;
             }
+
+            // Désactiver le bouton pour éviter double soumission
             if (submitBtn) {
                 submitBtn.disabled = true;
                 submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi en cours...';
             }
         });
-    };
+    }
 
-    // ========== 8. VALIDATION DU FORMULAIRE DE RÉPONSE (BACK-OFFICE) ==========
+    // ========== 6. VALIDATION DU FORMULAIRE DE RÉPONSE (BACKOFFICE) ==========
     const reponseForm = document.getElementById('reponseForm');
     if (reponseForm) {
+        const nomAgent = document.getElementById('nom_agent');
+        const contenu = document.getElementById('contenu');
+
+        function showError(field, errorId, show) {
+            const errorDiv = document.getElementById(errorId);
+            if (show) {
+                field.classList.add('error');
+                if (errorDiv) errorDiv.classList.add('show');
+            } else {
+                field.classList.remove('error');
+                if (errorDiv) errorDiv.classList.remove('show');
+            }
+        }
+
+        if (nomAgent) {
+            nomAgent.addEventListener('input', function() {
+                showError(this, 'nomAgentError', this.value.trim().length < 2);
+            });
+        }
+
+        if (contenu) {
+            contenu.addEventListener('input', function() {
+                showError(this, 'contenuError', this.value.trim().length < 10);
+            });
+        }
+
         reponseForm.addEventListener('submit', function(e) {
-            const contenu = document.getElementById('contenu');
-            const nomAgent = document.getElementById('nom_agent');
             let isValid = true;
-
-            if (contenu && contenu.value.trim().length < 10) {
-                isValid = false;
-                contenu.style.borderColor = '#EF4444';
-                showNotification('Le contenu de la réponse doit faire au moins 10 caractères.', 'error');
-            }
-
             if (nomAgent && nomAgent.value.trim().length < 2) {
+                showError(nomAgent, 'nomAgentError', true);
                 isValid = false;
-                nomAgent.style.borderColor = '#EF4444';
-                showNotification('Le nom de l\'agent est requis.', 'error');
             }
-
+            if (contenu && contenu.value.trim().length < 10) {
+                showError(contenu, 'contenuError', true);
+                isValid = false;
+            }
             if (!isValid) {
                 e.preventDefault();
+                if (window.showNotification) window.showNotification('Veuillez corriger les erreurs', 'error');
             }
         });
     }
 
-    // ========== 9. CONFIRMATION DE SUPPRESSION ==========
+    // ========== 7. CONFIRMATION DE SUPPRESSION ==========
     const deleteButtons = document.querySelectorAll('.btn-danger, .delete-btn, a[onclick*="confirm"]');
     deleteButtons.forEach(btn => {
         btn.addEventListener('click', function(e) {
@@ -229,7 +224,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
 
-    // ========== 10. FONCTIONS POUR MODALES (BACK-OFFICE) ==========
+    // ========== 8. FONCTIONS POUR MODALES (BACKOFFICE) ==========
     window.showDetails = function(reclamation) {
         const modal = document.getElementById('detailsModal');
         const modalBody = document.getElementById('modalBody');
@@ -247,15 +242,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const dateSoumission = new Date(reclamation.date_soumission).toLocaleDateString('fr-FR');
         
         modalBody.innerHTML = `
-            <div class="detail-row"><div class="detail-label">Référence</div><div class="detail-value">${reclamation.reference}</div></div>
-            <div class="detail-row"><div class="detail-label">Citoyen</div><div class="detail-value">${reclamation.citoyen}</div></div>
-            <div class="detail-row"><div class="detail-label">Service</div><div class="detail-value">${reclamation.nom_service || 'Non spécifié'}</div></div>
-            <div class="detail-row"><div class="detail-label">Catégorie</div><div class="detail-value">${reclamation.categorie}</div></div>
-            <div class="detail-row"><div class="detail-label">Objet</div><div class="detail-value">${reclamation.objet}</div></div>
-            <div class="detail-row"><div class="detail-label">Description</div><div class="detail-value">${reclamation.description}</div></div>
-            <div class="detail-row"><div class="detail-label">Lieu</div><div class="detail-value">${reclamation.lieu || 'Non spécifié'}</div></div>
-            <div class="detail-row"><div class="detail-label">Priorité</div><div class="detail-value">${reclamation.priorite}</div></div>
-            <div class="detail-row"><div class="detail-label">Statut</div><div class="detail-value"><span class="badge ${statusBadge}">${reclamation.statut}</span></div></div>
+            <div class="detail-row"><div class="detail-label">Référence</div><div class="detail-value">${escapeHtml(reclamation.reference)}</div></div>
+            <div class="detail-row"><div class="detail-label">Citoyen</div><div class="detail-value">${escapeHtml(reclamation.citoyen)}</div></div>
+            <div class="detail-row"><div class="detail-label">Service</div><div class="detail-value">${escapeHtml(reclamation.nom_service || 'Non spécifié')}</div></div>
+            <div class="detail-row"><div class="detail-label">Catégorie</div><div class="detail-value">${escapeHtml(reclamation.categorie)}</div></div>
+            <div class="detail-row"><div class="detail-label">Objet</div><div class="detail-value">${escapeHtml(reclamation.objet)}</div></div>
+            <div class="detail-row"><div class="detail-label">Description</div><div class="detail-value">${escapeHtml(reclamation.description)}</div></div>
+            <div class="detail-row"><div class="detail-label">Lieu</div><div class="detail-value">${escapeHtml(reclamation.lieu || 'Non spécifié')}</div></div>
+            <div class="detail-row"><div class="detail-label">Priorité</div><div class="detail-value">${escapeHtml(reclamation.priorite)}</div></div>
+            <div class="detail-row"><div class="detail-label">Statut</div><div class="detail-value"><span class="badge ${statusBadge}">${escapeHtml(reclamation.statut)}</span></div></div>
             <div class="detail-row"><div class="detail-label">Date</div><div class="detail-value">${dateSoumission}</div></div>
         `;
         modal.style.display = 'flex';
@@ -265,4 +260,23 @@ document.addEventListener('DOMContentLoaded', function() {
         const modal = document.getElementById('detailsModal');
         if (modal) modal.style.display = 'none';
     };
+
+    // Fonction utilitaire pour échapper le HTML
+    function escapeHtml(text) {
+        if (!text) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
 });
+
+// Styles pour animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+    @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
+    .form-control.error { border-color: #EF4444 !important; background-color: #FEE2E2 !important; }
+    .error-message { display: none; color: #DC2626; font-size: 12px; margin-top: 5px; }
+    .error-message.show { display: block; }
+`;
+document.head.appendChild(style);

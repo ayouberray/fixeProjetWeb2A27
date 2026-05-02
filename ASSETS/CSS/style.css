@@ -869,3 +869,65 @@ html[dir="rtl"] .card-link i {
 html[dir="rtl"] .card-link:hover i {
     transform: rotate(180deg) translateX(5px);
 }
+.hero {
+    min-height: 60vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 100px 2rem 60px;
+    background: linear-gradient(135deg, #F5FCF9 0%, #EBF7F3 100%);
+}
+
+.hero h1 {
+    font-size: 48px;
+    font-weight: 800;
+    color: #006D5B;
+    margin-bottom: 20px;
+    font-family: 'Syne', sans-serif;
+}
+
+.hero p {
+    font-size: 18px;
+    color: #5C8B7E;
+    margin-bottom: 30px;
+}
+
+.hero-buttons {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 32px;
+    border-radius: 12px;
+    text-decoration: none;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #006D5B, #004D3D);
+    color: white;
+}
+
+.btn-primary:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,109,91,0.35);
+}
+
+.btn-outline {
+    background: transparent;
+    border: 2px solid #006D5B;
+    color: #006D5B;
+}
+
+.btn-outline:hover {
+    background: rgba(0,109,91,0.05);
+    transform: translateY(-3px);
+}

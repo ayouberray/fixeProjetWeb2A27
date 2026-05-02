@@ -103,6 +103,7 @@ $stats = $ctrl->getStatistiques();
             <a href="lister.php" class="sidebar-link active"><i class="fas fa-tachometer-alt"></i><span>Tableau de bord</span></a>
             <div class="sidebar-divider">GESTION</div>
             <a href="lister.php" class="sidebar-link active"><i class="fas fa-comment-dots"></i><span>Réclamations</span></a>
+            <a href="../REPONSE/lister.php" class="sidebar-link"><i class="fas fa-reply"></i><span>Réponses</span></a>
             <div class="sidebar-divider">SYSTÈME</div>
             <a href="../../../index.php" class="sidebar-link"><i class="fas fa-sign-out-alt"></i><span>Retour au site</span></a>
         </nav>
@@ -146,7 +147,7 @@ $stats = $ctrl->getStatistiques();
                                         <button class="btn btn-info btn-sm" onclick='showDetails(<?= json_encode($r, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP) ?>)'><i class="fas fa-eye"></i> Détails</button>
                                         <a href="../REPONSE/ajouter.php?id_reclamation=<?= $r['id_reclamation'] ?>" class="btn btn-primary btn-sm">Répondre</a>
                                         <a href="modifier.php?id=<?= $r['id_reclamation'] ?>" class="btn btn-primary btn-sm">Modifier</a>
-                                        <a href="supprimer.php?id=<?= $r['id_reclamation'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('Supprimer ?')">Supprimer</a>
+                                        <a href="supprimer.php?id=<?= $r['id_reclamation'] ?>" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i> Supprimer</a>
                                     </td>
                                 </tr>
                                 <?php endforeach; ?>
@@ -172,45 +173,13 @@ $stats = $ctrl->getStatistiques();
     </div>
 </div>
 
+<script src="../../../ASSETS/JS/script.js"></script>
 <script>
     const menuToggle = document.getElementById('menuToggle');
     const sidebar = document.getElementById('sidebar');
     if(menuToggle && sidebar) {
         menuToggle.addEventListener('click', () => { sidebar.classList.toggle('open'); });
     }
-    
-    const modal = document.getElementById('detailsModal');
-    
-    function showDetails(reclamation) {
-        let statusBadge = '';
-        switch(reclamation.statut) {
-            case 'soumise': statusBadge = 'badge-soumise'; break;
-            case 'en_cours': statusBadge = 'badge-en_cours'; break;
-            case 'traitee': statusBadge = 'badge-traitee'; break;
-            case 'rejetee': statusBadge = 'badge-rejetee'; break;
-            default: statusBadge = 'badge-soumise';
-        }
-        
-        const dateSoumission = new Date(reclamation.date_soumission).toLocaleDateString('fr-FR');
-        
-        document.getElementById('modalBody').innerHTML = `
-            <div class="detail-row"><div class="detail-label">Référence</div><div class="detail-value">${reclamation.reference}</div></div>
-            <div class="detail-row"><div class="detail-label">Citoyen</div><div class="detail-value">${reclamation.citoyen}</div></div>
-            <div class="detail-row"><div class="detail-label">Service</div><div class="detail-value">${reclamation.nom_service || 'Non spécifié'}</div></div>
-            <div class="detail-row"><div class="detail-label">Catégorie</div><div class="detail-value">${reclamation.categorie}</div></div>
-            <div class="detail-row"><div class="detail-label">Objet</div><div class="detail-value">${reclamation.objet}</div></div>
-            <div class="detail-row"><div class="detail-label">Description</div><div class="detail-value">${reclamation.description}</div></div>
-            <div class="detail-row"><div class="detail-label">Lieu</div><div class="detail-value">${reclamation.lieu || 'Non spécifié'}</div></div>
-            <div class="detail-row"><div class="detail-label">Priorité</div><div class="detail-value">${reclamation.priorite}</div></div>
-            <div class="detail-row"><div class="detail-label">Statut</div><div class="detail-value"><span class="badge ${statusBadge}">${reclamation.statut}</span></div></div>
-            <div class="detail-row"><div class="detail-label">Date</div><div class="detail-value">${dateSoumission}</div></div>
-        `;
-        modal.style.display = 'flex';
-    }
-    
-    function closeModal() { modal.style.display = 'none'; }
-    window.onclick = (e) => { if(e.target == modal) closeModal(); }
 </script>
-
 </body>
 </html>
