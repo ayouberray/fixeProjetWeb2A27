@@ -36,9 +36,12 @@ if ($user && password_verify($password, $user['password'])) {
     $_SESSION['user_email'] = $user['email'];
     $_SESSION['user_role'] = $user['role'];
     
-    if ($user['role'] === 'admin') {
-        header('Location: ../backoffice/dashboard.php');
+    // Redirection selon le rôle
+    if ($user['role'] === 'admin' || $user['role'] === 'agent') {
+        // Admin et agents accèdent au backoffice
+        header('Location: ../backoffice/backoffice.php');
     } else {
+        // Clients/citoyens/professionnels accèdent à la frontoffice
         header('Location: index.php');
     }
     exit();

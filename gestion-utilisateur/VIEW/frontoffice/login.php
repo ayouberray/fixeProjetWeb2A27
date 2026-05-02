@@ -53,135 +53,106 @@
 }
 
 .navbar {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  position: fixed;
-  top: 0;
-  width: 100%;
-  z-index: 1000;
-  padding: 1rem 2rem;
-  box-shadow: 0 2px 8px rgba(0, 109, 91, 0.08);
-  transition: all 0.3s ease;
+    background: rgba(255, 255, 255, 0.98);
+    backdrop-filter: blur(12px);
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 1000;
+    padding: 0.5rem 2rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    transition: all 0.3s ease;
 }
-
+.navbar.scrolled { background: white; box-shadow: var(--shadow-sm); }
 .nav-container {
-  max-width: 1280px;
-  margin: 0 auto;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 1rem;
+    max-width: 1280px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 1rem;
 }
-
 .logo {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  text-decoration: none;
-  color: #006D5B;
-  transition: transform 0.3s ease;
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+    flex-shrink: 0;
 }
-
-.logo:hover {
-  transform: scale(1.02);
+.logo-img {
+    height: 40px;
+    width: auto;
+    max-width: 130px;
+    object-fit: contain;
+    display: block;
 }
-
-.logo-icon {
-  width: 42px;
-  height: 42px;
-  background: #006D5B;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 1.2rem;
-}
-
-.logo-text {
-  font-size: 1.5rem;
-  font-weight: 800;
-}
-
-.logo-text span {
-  font-weight: 400;
-  color: #2E7D32;
-}
-
 .nav-links {
-  display: flex;
-  align-items: center;
-  gap: 1.25rem;
-  flex-wrap: wrap;
+    display: flex;
+    align-items: center;
+    gap: 1.2rem;
+    flex-wrap: wrap;
 }
-
 .nav-links a {
-  text-decoration: none;
-  color: #475569;
-  font-weight: 500;
-  transition: color 0.3s ease;
+    text-decoration: none;
+    color: var(--gray-600);
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: color 0.3s ease;
 }
-
-.nav-links a:hover {
-  color: #006D5B;
+.nav-links a:hover { color: var(--primary); }
+.user-name {
+    color: var(--primary);
+    font-weight: 500;
+    background: var(--primary-light);
+    padding: 0.3rem 1rem;
+    border-radius: 30px;
+    font-size: 0.85rem;
 }
-
-.lang-toggle {
-  display: flex;
-  gap: 0.5rem;
-  background: #F1F5F9;
-  padding: 0.3rem;
-  border-radius: 30px;
+.btn-profiled {
+    background: var(--primary);
+    color: white;
+    padding: 0.4rem 1.2rem;
+    border-radius: 30px;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
 }
-
-.lang-btn {
-  padding: 0.3rem 0.8rem;
-  border: none;
-  background: transparent;
-  border-radius: 20px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.3s ease;
+.btn-profiled:hover { background: var(--primary-dark); transform: translateY(-1px); }
+.btn-logout {
+    background: #dc2626;
+    color: white;
+    padding: 0.4rem 1.2rem;
+    border-radius: 30px;
+    text-decoration: none;
+    font-weight: 500;
+    font-size: 0.85rem;
+    transition: all 0.3s ease;
 }
-
-.lang-btn.active {
-  background: #006D5B;
-  color: white;
+.btn-logout:hover { background: #b91c1c; transform: translateY(-1px); }
+.btn-login {
+    background: transparent;
+    color: var(--primary);
+    border: 1.5px solid var(--primary);
+    padding: 0.4rem 1.2rem;
+    border-radius: 30px;
+    font-weight: 500;
+    font-size: 0.85rem;
+    text-decoration: none;
+    transition: all 0.3s ease;
 }
-
-.btn-login,
-.btn-logout,
-.btn-secondary,
-.btn-primary {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.8rem 1.5rem;
-  border-radius: 999px;
-  border: none;
-  font-weight: 700;
-  text-decoration: none;
-  transition: all 0.3s ease;
-  color: white;
+.btn-login:hover { background: var(--primary); color: white; transform: translateY(-1px); }
+.btn-register {
+    background: var(--primary);
+    color: white;
+    padding: 0.4rem 1.2rem;
+    border-radius: 30px;
+    font-weight: 500;
+    font-size: 0.85rem;
+    text-decoration: none;
+    transition: all 0.3s ease;
 }
-
-.btn-login,
-.btn-primary {
-  background: #006D5B;
-}
-
-.btn-logout,
-.btn-secondary {
-  background: #dc2626;
-}
-
-.btn-login:hover,
-.btn-primary:hover,
-.btn-logout:hover,
-.btn-secondary:hover {
-  transform: translateY(-2px);
-}
+.btn-register:hover { background: var(--primary-dark); transform: translateY(-1px); }
 
 .login-wrapper {
   position: relative;
@@ -351,17 +322,20 @@ textarea:focus {
 
 <nav id="navbar" class="navbar">
     <div class="nav-container">
-        <a href="../../../index.php" class="logo">
-            <div class="logo-icon"><i class="fas fa-leaf"></i></div>
-            <div class="logo-text">inno<span>Gov</span></div>
+        <a href="index.php" class="logo">
+            <img src="../../assets/images/logo.png" alt="Logo" class="logo-img">
         </a>
         <div class="nav-links">
-            <a href="../../../index.php">Accueil</a>
-            <div class="lang-toggle">
-                <button class="lang-btn active" data-lang="fr">FR</button>
-                <button class="lang-btn" data-lang="ar">AR</button>
-            </div>
-            <a href="register.php" style="background:#2E7D32; color:white; padding:8px 20px; border-radius:8px; text-decoration:none;">Inscription</a>
+            <a href="index.php">Accueil</a>
+            <a href="#" id="servicesLink">Services</a>
+            <?php if(isset($_SESSION['user_id'])): ?>
+                <span class="user-name">👋 <?= htmlspecialchars($_SESSION['user_nom']) ?></span>
+                <a href="profil.php" class="btn-profiled">Mon profil</a>
+                <a href="logout.php" class="btn-logout">Déconnexion</a>
+            <?php else: ?>
+                <a href="login.php" class="btn-login">Connexion</a>
+                <a href="register.php" class="btn-register">Inscription</a>
+            <?php endif; ?>
         </div>
     </div>
 </nav>
@@ -517,23 +491,6 @@ textarea:focus {
             submitBtn.style.transform = 'translateX(5px)';
             setTimeout(() => { submitBtn.style.transform = ''; }, 200);
         }
-    });
-
-    // TOGGLE LANGUE
-    const langBtns = document.querySelectorAll('.lang-btn');
-    langBtns.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const lang = btn.getAttribute('data-lang');
-            langBtns.forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
-            if (lang === 'ar') {
-                document.body.style.direction = 'rtl';
-                document.body.style.textAlign = 'right';
-            } else {
-                document.body.style.direction = 'ltr';
-                document.body.style.textAlign = 'left';
-            }
-        });
     });
 </script>
 </body>

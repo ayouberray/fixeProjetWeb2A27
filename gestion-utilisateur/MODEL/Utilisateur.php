@@ -1,262 +1,572 @@
 <?php
 // Fichier: MODEL/Utilisateur.php
-// Modèle Utilisateur - Version complète avec tous les setters
-
-require_once __DIR__ . '/config.php';
+// Classe complète de gestion des utilisateurs - Adaptée à innogov_db
 
 class Utilisateur {
     private $db;
-    private $pdo;
-    
-    // Propriétés
-    private $id;
-    private $nom;
-    private $prenom;
-    private $sexe;
-    private $dateNaissance;
-    private $typeCompte;
-    private $role;
-    private $pays;
-    private $ville;
-    private $email;
-    private $telephone;
-    private $password;
-    private $nomOrganisation;
-    private $profession;
-    private $cin;
-    private $statut;
-    private $dateCreation;
     
     public function __construct() {
-        $this->db = Database::getInstance();
-        $this->pdo = $this->db->getConnection();
+        try {
+            $this->db = new PDO(
+                'mysql:host=localhost;dbname=innogov_db;charset=utf8',
+                'root',
+                '',
+                [
+                    PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                    PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC
+                ]
+            );
+        } catch (PDOException $e) {
+            die('Erreur de connexion : ' . $e->getMessage());
+        }
     }
     
-    // ==================== SETTERS (CHAINABLES) ====================
-    public function setId($id) { $this->id = $id; return $this; }
-    public function setNom($nom) { $this->nom = $nom; return $this; }
-    public function setPrenom($prenom) { $this->prenom = $prenom; return $this; }
-    public function setSexe($sexe) { $this->sexe = $sexe; return $this; }
-    public function setDateNaissance($date) { $this->dateNaissance = $date; return $this; }
-    public function setTypeCompte($type) { $this->typeCompte = $type; return $this; }
-    public function setRole($role) { $this->role = $role; return $this; }
-    public function setPays($pays) { $this->pays = $pays; return $this; }
-    public function setVille($ville) { $this->ville = $ville; return $this; }
-    public function setEmail($email) { $this->email = strtolower(trim($email)); return $this; }
-    public function setTelephone($telephone) { $this->telephone = $telephone; return $this; }
-    public function setPlainPassword($password) { 
-        $this->password = password_hash($password, PASSWORD_DEFAULT); 
-        return $this;
+    /**
+     * Récupère tous les utilisateurs
+     */
+    public function getAll() {
+        $stmt = $this->db->query("
+            SELECT id, nom, prenom, sexe, date_naissance, type_compte, role, 
+                   pays, ville, email, telephone, cin, statut, date_creation,
+                   nom_organisation, profession
+            FROM utilisateurs 
+            ORDER BY date_creation DESC
+        ");
+        return $stmt->fetchAll();
     }
-    public function setNomOrganisation($org) { $this->nomOrganisation = $org; return $this; }
-    public function setProfession($profession) { $this->profession = $profession; return $this; }
-    public function setCin($cin) { $this->cin = $cin; return $this; }
-    public function setStatut($statut) { $this->statut = $statut; return $this; }
     
-    // ==================== GETTERS ====================
-    public function getId() { return $this->id; }
-    public function getNom() { return $this->nom; }
-    public function getPrenom() { return $this->prenom; }
-    public function getSexe() { return $this->sexe; }
-    public function getDateNaissance() { return $this->dateNaissance; }
-    public function getTypeCompte() { return $this->typeCompte; }
-    public function getRole() { return $this->role; }
-    public function getPays() { return $this->pays; }
-    public function getVille() { return $this->ville; }
-    public function getEmail() { return $this->email; }
-    public function getTelephone() { return $this->telephone; }
-    public function getPassword() { return $this->password; }
-    public function getNomOrganisation() { return $this->nomOrganisation; }
-    public function getProfession() { return $this->profession; }
-    public function getCin() { return $this->cin; }
-    public function getStatut() { return $this->statut; }
-    
-    // ==================== MÉTHODES PRINCIPALES ====================
-    
-    // Sauvegarder un utilisateur (inscription)
-    public function save() {
-        $sql = "INSERT INTO utilisateurs (
-                    nom, prenom, sexe, date_naissance, type_compte,
-                    pays, ville, email, telephone, password, 
-                    cin, role, statut, nom_organisation, profession
-                ) VALUES (
-                    :nom, :prenom, :sexe, :date_naissance, :type_compte,
-                    :pays, :ville, :email, :telephone, :password,
-                    :cin, :role, :statut, :nom_organisation, :profession
-                )";
+    /**
+     * Récupère tous les utilisateurs avec tri et filtres
+     */
+    public function getAllOrdered($sort = 'date_creation', $order = 'DESC', $search = '', $roleFilter = '', $typeFilter = '') {
+        $allowedSorts = [
+            'id', 'nom', 'prenom', 'email', 'cin', 'telephone', 
+            'type_compte', 'role', 'date_creation', 'ville', 'statut'
+        ];
         
-        $stmt = $this->pdo->prepare($sql);
+        if (!in_array($sort, $allowedSorts)) {
+            $sort = 'date_creation';
+        }
         
-        return $stmt->execute([
-            ':nom' => $this->nom,
-            ':prenom' => $this->prenom,
-            ':sexe' => $this->sexe,
-            ':date_naissance' => $this->dateNaissance,
-            ':type_compte' => $this->typeCompte,
-            ':pays' => $this->pays,
-            ':ville' => $this->ville,
-            ':email' => $this->email,
-            ':telephone' => $this->telephone,
-            ':password' => $this->password,
-            ':cin' => $this->cin,
-            ':role' => 'user',
-            ':statut' => 'actif',
-            ':nom_organisation' => $this->nomOrganisation,
-            ':profession' => $this->profession
-        ]);
-    }
-    
-    // Créer un utilisateur (admin)
-    public function create($data) {
-        $sql = "INSERT INTO utilisateurs (
-                    nom, prenom, sexe, date_naissance, type_compte,
-                    pays, ville, email, telephone, password, 
-                    cin, role, statut
-                ) VALUES (
-                    :nom, :prenom, 'Homme', '1990-01-01', 'citoyen',
-                    'Tunisie', :ville, :email, :telephone, :password,
-                    :cin, :role, 'actif'
-                )";
+        $order = strtoupper($order) === 'ASC' ? 'ASC' : 'DESC';
         
-        $stmt = $this->pdo->prepare($sql);
+        $sql = "SELECT id, nom, prenom, sexe, date_naissance, type_compte, role, 
+                       pays, ville, email, telephone, cin, statut, date_creation,
+                       nom_organisation, profession
+                FROM utilisateurs WHERE 1=1";
+        $params = [];
         
-        return $stmt->execute([
-            ':nom' => $data['nom'],
-            ':prenom' => $data['prenom'] ?? '',
-            ':ville' => $data['ville'] ?? 'Tunis',
-            ':email' => $data['email'],
-            ':telephone' => $data['telephone'],
-            ':password' => password_hash($data['password'], PASSWORD_DEFAULT),
-            ':cin' => $data['cin'],
-            ':role' => $data['role']
-        ]);
+        if (!empty($search)) {
+            $sql .= " AND (nom LIKE :search OR prenom LIKE :search2 OR email LIKE :search3 OR cin LIKE :search4 OR telephone LIKE :search5 OR ville LIKE :search6)";
+            $searchTerm = "%$search%";
+            $params[':search'] = $searchTerm;
+            $params[':search2'] = $searchTerm;
+            $params[':search3'] = $searchTerm;
+            $params[':search4'] = $searchTerm;
+            $params[':search5'] = $searchTerm;
+            $params[':search6'] = $searchTerm;
+        }
+        
+        if (!empty($roleFilter)) {
+            $sql .= " AND role = :role";
+            $params[':role'] = $roleFilter;
+        }
+        
+        if (!empty($typeFilter)) {
+            $sql .= " AND type_compte = :type";
+            $params[':type'] = $typeFilter;
+        }
+        
+        $sql .= " ORDER BY $sort $order";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        
+        return $stmt->fetchAll();
     }
     
-    // Vérifier si l'email existe
-    public function emailExists($email) {
-        $sql = "SELECT COUNT(*) FROM utilisateurs WHERE email = :email";
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([':email' => $email]);
-        return $stmt->fetchColumn() > 0;
-    }
-    
-    // Vérifier si le CIN existe
-    public function cinExists($cin) {
-        if (empty($cin)) return false;
-        $sql = "SELECT COUNT(*) FROM utilisateurs WHERE cin = :cin";
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([':cin' => $cin]);
-        return $stmt->fetchColumn() > 0;
-    }
-    
-    // Récupérer par email
-    public function getByEmail($email) {
-        $sql = "SELECT * FROM utilisateurs WHERE email = :email";
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([':email' => $email]);
-        return $stmt->fetch();
-    }
-    
-    // Récupérer par ID
+    /**
+     * Récupère un utilisateur par son ID
+     */
     public function getById($id) {
-        $sql = "SELECT * FROM utilisateurs WHERE id = :id";
-        $stmt = $this->pdo->prepare($sql);
+        $stmt = $this->db->prepare("
+            SELECT id, nom, prenom, sexe, date_naissance, type_compte, role, 
+                   pays, ville, email, telephone, cin, statut, date_creation,
+                   nom_organisation, profession
+            FROM utilisateurs WHERE id = :id
+        ");
         $stmt->execute([':id' => $id]);
         return $stmt->fetch();
     }
     
-    // Récupérer tous les utilisateurs
-    public function getAll() {
-        $sql = "SELECT * FROM utilisateurs ORDER BY date_creation DESC";
-        $stmt = $this->pdo->query($sql);
-        return $stmt->fetchAll();
+    /**
+     * Récupère un utilisateur par son email
+     */
+    public function getByEmail($email) {
+        $stmt = $this->db->prepare("
+            SELECT id, nom, prenom, sexe, date_naissance, type_compte, role, 
+                   pays, ville, email, telephone, password, cin, statut, date_creation
+            FROM utilisateurs WHERE email = :email
+        ");
+        $stmt->execute([':email' => $email]);
+        return $stmt->fetch();
     }
     
-    // Connexion
-    public function login($email, $password) {
-        $user = $this->getByEmail($email);
-        if ($user && password_verify($password, $user['password'])) {
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['user_nom'] = $user['nom'] . ' ' . $user['prenom'];
-            $_SESSION['user_email'] = $user['email'];
-            $_SESSION['user_role'] = $user['role'];
-            $_SESSION['user_type'] = $user['type_compte'];
-            return $user;
-        }
-        return false;
+    /**
+     * Crée un nouvel utilisateur
+     */
+    public function create($data) {
+        $sql = "INSERT INTO utilisateurs (
+                    nom, prenom, sexe, date_naissance, type_compte, role, 
+                    pays, ville, email, telephone, password, cin, 
+                    nom_organisation, profession, statut, date_creation
+                ) VALUES (
+                    :nom, :prenom, :sexe, :date_naissance, :type_compte, :role,
+                    :pays, :ville, :email, :telephone, :password, :cin,
+                    :nom_organisation, :profession, :statut, NOW()
+                )";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            ':nom' => $data['nom'],
+            ':prenom' => $data['prenom'] ?? '',
+            ':sexe' => $data['sexe'] ?? 'Homme',
+            ':date_naissance' => $data['date_naissance'] ?? '2000-01-01',
+            ':type_compte' => $data['type_compte'] ?? 'citoyen',
+            ':role' => $data['role'] ?? 'user',
+            ':pays' => $data['pays'] ?? 'Tunisie',
+            ':ville' => $data['ville'] ?? 'Tunis',
+            ':email' => $data['email'],
+            ':telephone' => $data['telephone'] ?? '',
+            ':password' => password_hash($data['password'], PASSWORD_DEFAULT),
+            ':cin' => $data['cin'] ?? '',
+            ':nom_organisation' => $data['nom_organisation'] ?? null,
+            ':profession' => $data['profession'] ?? null,
+            ':statut' => $data['statut'] ?? 'actif'
+        ]);
+        
+        return $this->db->lastInsertId();
     }
     
-    // Déconnexion
-    public function logout() {
-        session_destroy();
-        return true;
-    }
-    
-    // Mettre à jour
+    /**
+     * Met à jour un utilisateur
+     */
     public function update($id, $data) {
         $sql = "UPDATE utilisateurs SET 
-                    nom = :nom, 
-                    prenom = :prenom, 
-                    email = :email, 
-                    telephone = :telephone,
-                    cin = :cin,
-                    role = :role
-                WHERE id = :id";
+                nom = :nom,
+                prenom = :prenom,
+                email = :email,
+                telephone = :telephone,
+                cin = :cin,
+                ville = :ville,
+                type_compte = :type_compte,
+                role = :role,
+                statut = :statut";
         
-        $stmt = $this->pdo->prepare($sql);
-        return $stmt->execute([
+        $params = [
             ':id' => $id,
             ':nom' => $data['nom'],
-            ':prenom' => $data['prenom'],
+            ':prenom' => $data['prenom'] ?? '',
             ':email' => $data['email'],
-            ':telephone' => $data['telephone'],
-            ':cin' => $data['cin'],
-            ':role' => $data['role']
-        ]);
+            ':telephone' => $data['telephone'] ?? '',
+            ':cin' => $data['cin'] ?? '',
+            ':ville' => $data['ville'] ?? 'Tunis',
+            ':type_compte' => $data['type_compte'] ?? 'citoyen',
+            ':role' => $data['role'] ?? 'user',
+            ':statut' => $data['statut'] ?? 'actif'
+        ];
+        
+        if (!empty($data['password'])) {
+            $sql .= ", password = :password";
+            $params[':password'] = password_hash($data['password'], PASSWORD_DEFAULT);
+        }
+        
+        $sql .= " WHERE id = :id";
+        
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute($params);
     }
     
-    // Supprimer
+    /**
+     * Supprime un utilisateur
+     */
     public function delete($id) {
-        $sql = "DELETE FROM utilisateurs WHERE id = :id";
-        $stmt = $this->pdo->prepare($sql);
+        $stmt = $this->db->prepare("DELETE FROM utilisateurs WHERE id = :id");
         return $stmt->execute([':id' => $id]);
     }
     
-    // ==================== STATISTIQUES ====================
-    
+    /**
+     * Compte tous les utilisateurs
+     */
     public function countAll() {
-        $sql = "SELECT COUNT(*) as total FROM utilisateurs";
-        $stmt = $this->pdo->query($sql);
+        $stmt = $this->db->query("SELECT COUNT(*) as total FROM utilisateurs");
         $result = $stmt->fetch();
-        return $result['total'];
+        return (int)$result['total'];
     }
     
+    /**
+     * Compte les utilisateurs par rôle
+     */
     public function countByRole($role) {
-        $sql = "SELECT COUNT(*) as total FROM utilisateurs WHERE role = :role";
-        $stmt = $this->pdo->prepare($sql);
+        $stmt = $this->db->prepare("SELECT COUNT(*) as total FROM utilisateurs WHERE role = :role");
         $stmt->execute([':role' => $role]);
         $result = $stmt->fetch();
-        return $result['total'];
+        return (int)$result['total'];
     }
     
-    public function countByType($type) {
-        $sql = "SELECT COUNT(*) as total FROM utilisateurs WHERE type_compte = :type";
-        $stmt = $this->pdo->prepare($sql);
+    /**
+     * Compte les utilisateurs par type de compte
+     */
+    public function countByTypeCompte($type) {
+        $stmt = $this->db->prepare("SELECT COUNT(*) as total FROM utilisateurs WHERE type_compte = :type");
         $stmt->execute([':type' => $type]);
         $result = $stmt->fetch();
-        return $result['total'];
+        return (int)$result['total'];
     }
     
-    public function countByStatut($statut) {
-        $sql = "SELECT COUNT(*) as total FROM utilisateurs WHERE statut = :statut";
-        $stmt = $this->pdo->prepare($sql);
-        $stmt->execute([':statut' => $statut]);
+    /**
+     * Compte les utilisateurs par période
+     */
+    public function countUsersByPeriod($period) {
+        switch ($period) {
+            case 'week':
+                $condition = "date_creation >= DATE_SUB(NOW(), INTERVAL 7 DAY)";
+                break;
+            case 'last_week':
+                $condition = "date_creation >= DATE_SUB(NOW(), INTERVAL 14 DAY) AND date_creation < DATE_SUB(NOW(), INTERVAL 7 DAY)";
+                break;
+            case 'month':
+                $condition = "date_creation >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
+                break;
+            case 'last_month':
+                $condition = "date_creation >= DATE_SUB(NOW(), INTERVAL 60 DAY) AND date_creation < DATE_SUB(NOW(), INTERVAL 30 DAY)";
+                break;
+            case 'quarter':
+                $condition = "date_creation >= DATE_SUB(NOW(), INTERVAL 90 DAY)";
+                break;
+            case 'last_quarter':
+                $condition = "date_creation >= DATE_SUB(NOW(), INTERVAL 180 DAY) AND date_creation < DATE_SUB(NOW(), INTERVAL 90 DAY)";
+                break;
+            case 'year':
+                $condition = "date_creation >= DATE_SUB(NOW(), INTERVAL 365 DAY)";
+                break;
+            case 'last_year':
+                $condition = "date_creation >= DATE_SUB(NOW(), INTERVAL 730 DAY) AND date_creation < DATE_SUB(NOW(), INTERVAL 365 DAY)";
+                break;
+            default:
+                $condition = "date_creation >= DATE_SUB(NOW(), INTERVAL 30 DAY)";
+        }
+        
+        $stmt = $this->db->query("SELECT COUNT(*) as total FROM utilisateurs WHERE $condition");
         $result = $stmt->fetch();
-        return $result['total'];
+        return (int)$result['total'];
     }
     
+    /**
+     * Compte les utilisateurs actifs
+     */
+    public function countActiveUsers() {
+        $stmt = $this->db->query("
+            SELECT COUNT(*) as total 
+            FROM utilisateurs 
+            WHERE statut = 'actif'
+        ");
+        $result = $stmt->fetch();
+        return (int)$result['total'];
+    }
+    
+    /**
+     * Récupère le taux de complétion des profils
+     */
+    public function getProfileCompletionRate() {
+        $stmt = $this->db->query("
+            SELECT 
+                COUNT(*) as total,
+                SUM(CASE 
+                    WHEN nom IS NOT NULL AND nom != '' 
+                    AND prenom IS NOT NULL AND prenom != ''
+                    AND email IS NOT NULL AND email != ''
+                    AND cin IS NOT NULL AND cin != ''
+                    AND telephone IS NOT NULL AND telephone != ''
+                    AND ville IS NOT NULL AND ville != ''
+                    THEN 1 ELSE 0 
+                END) as complete
+            FROM utilisateurs
+        ");
+        $result = $stmt->fetch();
+        
+        if ($result['total'] > 0) {
+            return round(($result['complete'] / $result['total']) * 100);
+        }
+        return 0;
+    }
+    
+    /**
+     * Récupère les inscriptions mensuelles (12 derniers mois)
+     */
+    public function getMonthlyRegistrations() {
+        $stmt = $this->db->query("
+            SELECT 
+                MONTH(date_creation) as mois,
+                YEAR(date_creation) as annee,
+                COUNT(*) as total
+            FROM utilisateurs 
+            WHERE date_creation >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+            GROUP BY YEAR(date_creation), MONTH(date_creation)
+            ORDER BY annee ASC, mois ASC
+        ");
+        
+        $result = $stmt->fetchAll();
+        
+        $data = [];
+        $currentDate = new DateTime();
+        $currentDate->modify('-11 months');
+        
+        for ($i = 0; $i < 12; $i++) {
+            $monthKey = (int)$currentDate->format('m');
+            $yearKey = (int)$currentDate->format('Y');
+            
+            $found = false;
+            foreach ($result as $row) {
+                if ((int)$row['mois'] === $monthKey && (int)$row['annee'] === $yearKey) {
+                    $data[] = (int)$row['total'];
+                    $found = true;
+                    break;
+                }
+            }
+            
+            if (!$found) {
+                $data[] = 0;
+            }
+            
+            $currentDate->modify('+1 month');
+        }
+        
+        return $data;
+    }
+    
+    /**
+     * Statistiques par ville
+     */
+    public function getStatsParVille() {
+        $stmt = $this->db->query("
+            SELECT 
+                ville as region,
+                COUNT(*) as total
+            FROM utilisateurs
+            WHERE ville IS NOT NULL AND ville != ''
+            GROUP BY ville
+            ORDER BY total DESC
+            LIMIT 8
+        ");
+        
+        $result = $stmt->fetchAll();
+        
+        if (empty($result)) {
+            return [
+                ['region' => 'Tunis', 'total' => 0],
+                ['region' => 'Ariana', 'total' => 0]
+            ];
+        }
+        
+        return $result;
+    }
+    
+    /**
+     * Vérifie si l'utilisateur connecté est admin
+     */
     public function isAdmin() {
         return isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'admin';
     }
+    
+    /**
+     * Vérifie si l'utilisateur connecté est agent
+     */
+    public function isAgent() {
+        return isset($_SESSION['user_role']) && $_SESSION['user_role'] === 'agent';
+    }
+    
+    /**
+     * Authentifie un utilisateur
+     */
+    public function login($email, $password) {
+        $user = $this->getByEmail($email);
+        
+        if ($user && password_verify($password, $user['password'])) {
+            return $user;
+        }
+        
+        return false;
+    }
+
+    /**
+     * Déconnecte un utilisateur
+     */
+    public function logout() {
+        session_destroy();
+    }
+
+    // ==================== PROPRIÉTÉS PRIVÉES POUR LES SETTERS ====================
+    private $nom;
+    private $prenom;
+    private $sexe;
+    private $dateNaissance;
+    private $cin;
+    private $telephone;
+    private $typeCompte;
+    private $pays;
+    private $ville;
+    private $email;
+    private $plainPassword;
+    private $nomOrganisation;
+    private $profession;
+    private $statut;
+    private $role;
+
+    // ==================== SETTERS (RETOURNENT $this POUR FLUENT INTERFACE) ====================
+    public function setNom($nom) {
+        $this->nom = $nom;
+        return $this;
+    }
+
+    public function setPrenom($prenom) {
+        $this->prenom = $prenom;
+        return $this;
+    }
+
+    public function setSexe($sexe) {
+        $this->sexe = $sexe;
+        return $this;
+    }
+
+    public function setDateNaissance($dateNaissance) {
+        $this->dateNaissance = $dateNaissance;
+        return $this;
+    }
+
+    public function setCin($cin) {
+        $this->cin = $cin;
+        return $this;
+    }
+
+    public function setTelephone($telephone) {
+        $this->telephone = $telephone;
+        return $this;
+    }
+
+    public function setTypeCompte($typeCompte) {
+        $this->typeCompte = $typeCompte;
+        return $this;
+    }
+
+    public function setPays($pays) {
+        $this->pays = $pays;
+        return $this;
+    }
+
+    public function setVille($ville) {
+        $this->ville = $ville;
+        return $this;
+    }
+
+    public function setEmail($email) {
+        $this->email = $email;
+        return $this;
+    }
+
+    public function setPlainPassword($plainPassword) {
+        $this->plainPassword = $plainPassword;
+        return $this;
+    }
+
+    public function setNomOrganisation($nomOrganisation) {
+        $this->nomOrganisation = $nomOrganisation;
+        return $this;
+    }
+
+    public function setProfession($profession) {
+        $this->profession = $profession;
+        return $this;
+    }
+
+    public function setStatut($statut) {
+        $this->statut = $statut;
+        return $this;
+    }
+
+    public function setRole($role) {
+        $this->role = $role;
+        return $this;
+    }
+
+    // ==================== MÉTHODE POUR ENREGISTRER L'UTILISATEUR ====================
+    /**
+     * Enregistre un nouvel utilisateur avec les propriétés définies par les setters
+     * Assigne automatiquement le rôle selon le type_compte
+     */
+    public function save() {
+        // Assigner le rôle selon le type_compte
+        $role = 'user'; // Rôle par défaut
+        
+        if ($this->typeCompte === 'agent_public') {
+            $role = 'agent'; // Les agents publics deviennent agents
+        }
+        
+        $sql = "INSERT INTO utilisateurs (
+                    nom, prenom, sexe, date_naissance, type_compte, role, 
+                    pays, ville, email, telephone, password, cin, 
+                    nom_organisation, profession, statut, date_creation
+                ) VALUES (
+                    :nom, :prenom, :sexe, :date_naissance, :type_compte, :role,
+                    :pays, :ville, :email, :telephone, :password, :cin,
+                    :nom_organisation, :profession, :statut, NOW()
+                )";
+        
+        $stmt = $this->db->prepare($sql);
+        
+        try {
+            $stmt->execute([
+                ':nom' => $this->nom,
+                ':prenom' => $this->prenom,
+                ':sexe' => $this->sexe,
+                ':date_naissance' => $this->dateNaissance,
+                ':type_compte' => $this->typeCompte,
+                ':role' => $role,
+                ':pays' => $this->pays,
+                ':ville' => $this->ville,
+                ':email' => $this->email,
+                ':telephone' => $this->telephone,
+                ':password' => password_hash($this->plainPassword, PASSWORD_DEFAULT),
+                ':cin' => $this->cin,
+                ':nom_organisation' => empty($this->nomOrganisation) ? null : $this->nomOrganisation,
+                ':profession' => empty($this->profession) ? null : $this->profession,
+                ':statut' => $this->statut
+            ]);
+            
+            return true;
+        } catch (PDOException $e) {
+            error_log('Erreur lors de l\'insertion : ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
+     * Vérifie si une email existe déjà
+     */
+    public function emailExists($email) {
+        $stmt = $this->db->prepare("SELECT COUNT(*) as total FROM utilisateurs WHERE email = :email");
+        $stmt->execute([':email' => $email]);
+        $result = $stmt->fetch();
+        return (int)$result['total'] > 0;
+    }
+
+    /**
+     * Vérifie si un CIN existe déjà
+     */
+    public function cinExists($cin) {
+        $stmt = $this->db->prepare("SELECT COUNT(*) as total FROM utilisateurs WHERE cin = :cin");
+        $stmt->execute([':cin' => $cin]);
+        $result = $stmt->fetch();
+        return (int)$result['total'] > 0;
+    }
 }
-?>

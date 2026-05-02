@@ -167,9 +167,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $user = $utilisateur->login($email, $password);
     
     if ($user) {
-        // Redirection selon le type de compte
-        if ($user['type_compte'] === 'agent_public') {
-            header('Location: ../VIEW/backoffice/dashboard.php');
+        // Définir les variables de session
+        $_SESSION['user_id'] = $user['id'];
+        $_SESSION['user_nom'] = $user['nom'];
+        $_SESSION['user_email'] = $user['email'];
+        $_SESSION['user_role'] = $user['role'];
+        
+        // Redirection selon le rôle
+        if ($user['role'] === 'admin' || $user['role'] === 'agent') {
+            header('Location: ../VIEW/backoffice/backoffice.php');
         } else {
             header('Location: ../VIEW/frontoffice/index.php');
         }
