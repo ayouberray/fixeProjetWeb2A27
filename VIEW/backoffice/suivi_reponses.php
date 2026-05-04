@@ -14,10 +14,10 @@ if (!$id_demande) {
     exit();
 }
 
-// Connexion DB
+
 $db = Config::getConnexion();
 
-// Récupérer les infos de la demande
+
 $stmt = $db->prepare("SELECT d.*, c.nom as nom_citoyen, c.prenom as prenom_citoyen, s.nom_service 
                       FROM demandes d 
                       LEFT JOIN citoyens c ON d.id_citoyen = c.id_citoyen 
@@ -31,11 +31,11 @@ if (!$demande) {
     exit();
 }
 
-// Récupérer les réponses via le modèle
+
 $suiviReponse = new SuiviReponse();
 $reponses = $suiviReponse->getReponsesByDemande($id_demande);
 
-// Messages
+
 $message = $_GET['success'] ?? '';
 $error = $_GET['error'] ?? '';
 
@@ -83,7 +83,7 @@ $user_initials = 'AD';
             line-height: 1.6;
         }
 
-        /* ========== SIDEBAR ========== */
+        
         .sidebar {
             width: 280px;
             background: linear-gradient(180deg, #006D5B 0%, #004D3D 100%);
@@ -166,14 +166,14 @@ $user_initials = 'AD';
         .nav-link.active { background: rgba(255, 255, 255, 0.2); color: white; }
         .nav-link i { width: 24px; text-align: center; }
 
-        /* ========== MAIN ========== */
+        
         .main {
             margin-left: 280px;
             padding: 2rem;
             min-height: 100vh;
         }
 
-        /* ========== TOP BAR ========== */
+        
         .top-bar {
             background: var(--white);
             border-radius: var(--radius-lg);
@@ -225,7 +225,7 @@ $user_initials = 'AD';
 
         .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 12px 28px -8px rgba(0,109,91,0.5); }
 
-        /* ========== ALERTES ========== */
+        
         .alert {
             padding: 14px 20px;
             border-radius: var(--radius-md);
@@ -241,7 +241,7 @@ $user_initials = 'AD';
         .alert-success { background: #D1FAE5; color: #059669; border-left-color: #059669; }
         .alert-danger { background: #FEE2E2; color: #DC2626; border-left-color: #DC2626; }
 
-        /* ========== DEMANDE INFO CARD ========== */
+        
         .info-card {
             background: var(--white);
             border-radius: var(--radius-lg);
@@ -272,7 +272,7 @@ $user_initials = 'AD';
 
         .info-label { font-weight: 600; color: var(--gray-700); min-width: 80px; }
 
-        /* ========== RÉPONSES ========== */
+        
         .reponses-container {
             background: var(--white);
             border-radius: var(--radius-lg);
@@ -391,7 +391,7 @@ $user_initials = 'AD';
 </head>
 <body>
     <div class="app">
-        <!-- SIDEBAR -->
+        
         <aside class="sidebar">
             <a href="index.php" class="logo">
                 <div class="logo-icon">IG</div>
@@ -422,9 +422,9 @@ $user_initials = 'AD';
             </ul>
         </aside>
 
-        <!-- MAIN -->
+        
         <main class="main">
-            <!-- TOP BAR -->
+            
             <div class="top-bar">
                 <div>
                     <a href="index.php" class="back-btn">
@@ -439,7 +439,7 @@ $user_initials = 'AD';
                 </a>
             </div>
 
-            <!-- MESSAGES -->
+            
             <?php if ($message): ?>
                 <div class="alert alert-success">
                     <i class="fas fa-check-circle"></i> <?= htmlspecialchars($message) ?>
@@ -451,7 +451,7 @@ $user_initials = 'AD';
                 </div>
             <?php endif; ?>
 
-            <!-- INFO DEMANDE -->
+            
             <div class="info-card">
                 <h3><i class="fas fa-info-circle"></i> Informations de la demande</h3>
                 <div class="info-grid">
@@ -484,7 +484,7 @@ $user_initials = 'AD';
                 </div>
             </div>
 
-            <!-- LISTE DES RÉPONSES -->
+            
             <div class="reponses-container">
                 <div class="reponses-header">
                     <h2>
@@ -532,13 +532,13 @@ $user_initials = 'AD';
                                     <?php endif; ?>
                                 </div>
                                 <div class="reponse-actions">
-                                    <!-- BOUTON MODIFIER -->
+                                    
                                     <a href="modifier_reponse.php?id=<?= $rep['id_reponse'] ?>" 
                                        class="action-icon" 
                                        title="Modifier cette réponse">
                                         <i class="fas fa-edit"></i>
                                     </a>
-                                    <!-- BOUTON SUPPRIMER -->
+                                    
                                     <a href="supprimer_reponse.php?id=<?= $rep['id_reponse'] ?>" 
                                        class="action-icon delete" 
                                        title="Supprimer cette réponse"

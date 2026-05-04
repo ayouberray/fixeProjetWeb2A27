@@ -1,7 +1,7 @@
 <?php
 require_once __DIR__ . '/../../CONTROLLER/ReponseController.php';
 
-// Initialiser la session
+
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -21,7 +21,7 @@ if (!$reponse) {
     exit();
 }
 
-// Suppression confirmée
+
 if (isset($_POST['confirm_delete'])) {
     if ($reponseController->supprimer($id_reponse)) {
         header('Location: index.php?success=Réponse supprimée avec succès');

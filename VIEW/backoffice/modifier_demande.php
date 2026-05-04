@@ -1,668 +1,219 @@
 <?php
-// ==========================================
-// FORCER LA SESSION ADMIN AVANT TOUT
-// ==========================================
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-// S'assurer que l'admin est connecté avec les bons droits
+session_start();
 $_SESSION['user_id'] = 1;
 $_SESSION['user_nom'] = 'Administrateur';
 $_SESSION['user_prenom'] = 'Admin';
 $_SESSION['user_role'] = 'admin';
 
+// ========== CONFIGURATION TWILIO ==========
+define('TWILIO_SID', 'AC8076693893118ab692d90b6b60aa2456');
+define('TWILIO_TOKEN', '5c07c38bb732fc025429e90f9fd63806');
+define('TWILIO_PHONE', '+19129133693');
+
 require_once __DIR__ . '/../../CONTROLLER/DemandeController.php';
 
 $id_demande = isset($_GET['id']) ? (int)$_GET['id'] : 0;
-
-if (!$id_demande) {
-    header('Location: index.php?error=ID invalide');
-    exit();
-}
+if (!$id_demande) { header('Location: index.php?error=ID invalide'); exit(); }
 
 $controller = new DemandeController();
 $data = $controller->modifier($id_demande);
 
 $demande = $data['demande'] ?? null;
 $services = $data['services'] ?? [];
+if (!$demande) { header('Location: index.php?error=Demande introuvable'); exit(); }
 
-if (!$demande) {
-    header('Location: index.php?error=Demande introuvable');
+$ancienStatut = $demande['statut'];
+
+// ========== SI POST ==========
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    
+    $nouveauStatut = $_POST['statut'] ?? $ancienStatut;
+    $titre = trim($_POST['titre'] ?? '');
+    $description = trim($_POST['description'] ?? '');
+    $id_service = (int)($_POST['id_service'] ?? 0);
+    $type_demande = $_POST['type_demande'] ?? '';
+    
+    // Connexion BDD
+    $bdd = new PDO('mysql:host=localhost;dbname=pro', 'root', '');
+    $bdd->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    
+    // 1. Mise à jour demande
+    $update = $bdd->prepare("UPDATE demandes SET titre=?, description=?, type_demande=?, id_service=?, statut=?, date_modification=NOW() WHERE id_demande=?");
+    $update->execute([$titre, $description, $type_demande, $id_service, $nouveauStatut, $id_demande]);
+    
+    // 2. Ajouter suivi
+    $suivi = $bdd->prepare("INSERT INTO suivi_demandes (id_demande, ancien_statut, nouveau_statut, commentaire) VALUES (?, ?, ?, 'Statut modifié')");
+    $suivi->execute([$id_demande, $ancienStatut, $nouveauStatut]);
+    
+    // 3. Si passage à traité → SMS
+    if ($ancienStatut !== 'traite' && $nouveauStatut === 'traite') {
+        
+        // Récupérer tel du citoyen
+        $stmt = $bdd->prepare("SELECT c.telephone FROM demandes d JOIN citoyens c ON d.id_citoyen = c.id_citoyen WHERE d.id_demande=?");
+        $stmt->execute([$id_demande]);
+        $tel = $stmt->fetchColumn();
+        
+        $smsEnvoye = false;
+        
+        if ($tel) {
+            // Nettoyer numéro
+            $tel = preg_replace('/[^0-9]/', '', $tel);
+            if (!empty($tel) && $tel[0] != '+') $tel = '+' . $tel;
+            
+            // Envoyer SMS via Twilio
+            $ch = curl_init('https://api.twilio.com/2010-04-01/Accounts/' . TWILIO_SID . '/Messages.json');
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query([
+                'From' => TWILIO_PHONE,
+                'To'   => $tel,
+                'Body' => "InnoGov: Demande #" . str_pad($id_demande, 5, '0', STR_PAD_LEFT) . " traitee."
+            ]));
+            curl_setopt($ch, CURLOPT_USERPWD, TWILIO_SID . ':' . TWILIO_TOKEN);
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+            
+            $resp = curl_exec($ch);
+            $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+            
+            $smsEnvoye = ($http == 201);
+            
+            // Log
+            $logDir = __DIR__ . '/../../logs';
+            if (!is_dir($logDir)) mkdir($logDir, 0777, true);
+            file_put_contents($logDir . '/sms.log', date('Y-m-d H:i:s') . " | #$id_demande | Tel:$tel | HTTP:$http | $resp\n", FILE_APPEND);
+        }
+        
+        $msg = "Demande #" . str_pad($id_demande, 5, '0', STR_PAD_LEFT) . " traitée";
+        $msg .= $smsEnvoye ? " | 📱 SMS envoyé" : " | ⚠️ SMS échoué";
+        header('Location: index.php?success=' . urlencode($msg));
+        exit();
+    }
+    
+    header('Location: index.php?success=Demande modifiée avec succès');
     exit();
 }
 
 $types_demandes = [
-    'urbanisme' => '🏗️ Urbanisme',
-    'voirie' => '🛣️ Voirie',
-    'etat_civil' => '📜 État Civil',
-    'culture' => '🎭 Culture',
-    'social' => '🤝 Social',
-    'autre' => '📌 Autre'
+    'urbanisme' => '🏗️ Urbanisme', 'voirie' => '🛣️ Voirie', 'etat_civil' => '📜 État Civil',
+    'culture' => '🎭 Culture', 'social' => '🤝 Social', 'autre' => '📌 Autre'
 ];
 
 $statuts = [
-    'en_attente' => '⏳ En attente',
-    'en_cours' => '🔄 En cours', 
-    'traite' => '✅ Traité',
-    'refuse' => '❌ Refusé'
+    'en_attente' => '⏳ En attente', 'en_cours' => '🔄 En cours', 
+    'traite' => '✅ Traité', 'refuse' => '❌ Refusé'
 ];
 ?>
-
 <!DOCTYPE html>
 <html lang="fr">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>InnoGov • Modifier Demande #<?= $id_demande ?></title>
+    <title>Modifier Demande #<?= $id_demande ?></title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        :root {
-            --primary: #006D5B;
-            --primary-dark: #004D3D;
-            --primary-light: #E6F4F0;
-            --secondary: #2E7D32;
-            --secondary-dark: #1B5E20;
-            --success: #00A86B;
-            --warning: #FFB800;
-            --danger: #E31E24;
-            --info: #17A2B8;
-            --dark: #1A2C3E;
-            --gray-900: #2D3A4B;
-            --gray-700: #4A5A6E;
-            --gray-500: #8A99B0;
-            --gray-300: #D1D9E6;
-            --gray-100: #F5FCF9;
-            --white: #FFFFFF;
-            --shadow-xs: 0 1px 2px rgba(0,0,0,0.05);
-            --shadow-sm: 0 2px 4px rgba(0,0,0,0.05);
-            --shadow-md: 0 4px 8px -2px rgba(0,0,0,0.08);
-            --shadow-lg: 0 12px 24px -8px rgba(0,0,0,0.12);
-            --shadow-xl: 0 20px 40px -12px rgba(0,0,0,0.2);
-            --shadow-primary: 0 8px 20px -6px rgba(0,109,91,0.4);
-            --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
-            --transition-base: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            --radius-sm: 0.5rem;
-            --radius-md: 0.75rem;
-            --radius-lg: 1rem;
-            --radius-xl: 1.5rem;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            background: var(--gray-100);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 1.5rem;
-        }
-
-        h1, h2, h3 {
-            font-family: 'Inter', sans-serif;
-            font-weight: 700;
-            color: var(--dark);
-        }
-
-        .container { max-width: 750px; width: 100%; }
-
-        .form-card {
-            background: var(--white);
-            border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-lg);
-            overflow: hidden;
-            animation: slideIn 0.4s ease;
-        }
-
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .form-header {
-            padding: 2rem 2rem 1.5rem;
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: white;
-        }
-
-        .form-header .back-link {
-            color: rgba(255,255,255,0.8);
-            text-decoration: none;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 1rem;
-            transition: var(--transition-base);
-            font-weight: 500;
-        }
-
-        .form-header .back-link:hover { 
-            color: white; 
-            transform: translateX(-3px);
-        }
-
-        .form-title { 
-            font-size: 1.75rem; 
-            font-weight: 800; 
-            display: flex; 
-            align-items: center; 
-            gap: 1rem; 
-            flex-wrap: wrap;
-        }
-
-        .demande-id { 
-            background: rgba(255,255,255,0.2);
-            backdrop-filter: blur(10px);
-            padding: 0.35rem 1.2rem; 
-            border-radius: 50px; 
-            font-size: 0.95rem;
-            font-weight: 600;
-            border: 1px solid rgba(255,255,255,0.3);
-        }
-
-        .form-body { padding: 2rem; }
-
-        .form-group { margin-bottom: 1.5rem; }
-
-        .form-label {
-            display: block;
-            font-weight: 600;
-            color: var(--gray-700);
-            margin-bottom: 0.5rem;
-            font-size: 0.9rem;
-        }
-
-        .form-label .required { color: var(--danger); }
-
-        .form-input, .form-select, .form-textarea {
-            width: 100%;
-            padding: 0.875rem 1rem;
-            border: 2px solid var(--gray-300);
-            border-radius: var(--radius-md);
-            font-size: 0.95rem;
-            font-family: 'Inter', sans-serif;
-            transition: var(--transition-base);
-            background: white;
-            color: var(--dark);
-        }
-
-        .form-input:focus, .form-select:focus, .form-textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 4px rgba(0,109,91,0.15);
-        }
-
-        .form-textarea { resize: vertical; min-height: 120px; }
-
-        /* ========== INFO BOX ========== */
-        .info-box {
-            background: var(--primary-light);
-            border-radius: var(--radius-md);
-            padding: 1.25rem;
-            margin-bottom: 1.5rem;
-            border: 2px solid rgba(0,109,91,0.15);
-        }
-
-        .info-box .info-row {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            margin-bottom: 0.75rem;
-        }
-
-        .info-box .info-row:last-child {
-            margin-bottom: 0;
-        }
-
-        .info-box .info-icon {
-            width: 24px;
-            color: var(--primary);
-            text-align: center;
-        }
-
-        .info-box .info-label {
-            font-weight: 600;
-            color: var(--gray-700);
-            min-width: 150px;
-        }
-
-        .info-box .info-value {
-            color: var(--dark);
-        }
-
-        /* ========== STATUT SELECTOR ========== */
-        .statut-selector {
-            background: var(--white);
-            border-radius: var(--radius-md);
-            padding: 1.25rem;
-            margin-bottom: 1.5rem;
-            border: 2px solid var(--gray-300);
-            transition: var(--transition-base);
-        }
-
-        .statut-selector:focus-within {
-            border-color: var(--primary);
-            box-shadow: 0 0 0 4px rgba(0,109,91,0.1);
-        }
-
-        .statut-selector .statut-label {
-            font-weight: 600;
-            color: var(--gray-700);
-            margin-bottom: 0.75rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .statut-options {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 0.75rem;
-        }
-
-        .statut-option {
-            position: relative;
-        }
-
-        .statut-option input[type="radio"] {
-            display: none;
-        }
-
-        .statut-option label {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            padding: 0.75rem 1rem;
-            border: 2px solid var(--gray-300);
-            border-radius: var(--radius-md);
-            cursor: pointer;
-            transition: var(--transition-base);
-            font-weight: 600;
-            font-size: 0.9rem;
-            text-align: center;
-            background: var(--white);
-        }
-
-        .statut-option label:hover {
-            border-color: var(--primary);
-            background: var(--primary-light);
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-sm);
-        }
-
-        .statut-option input[type="radio"]:checked + label {
-            border-color: var(--primary);
-            background: var(--primary-light);
-            color: var(--primary-dark);
-            box-shadow: var(--shadow-sm);
-        }
-
-        /* Couleurs spécifiques par statut */
-        .statut-option.en_attente input:checked + label {
-            border-color: #D97706;
-            background: #FEF3C7;
-            color: #92400E;
-        }
-
-        .statut-option.en_cours input:checked + label {
-            border-color: #2563EB;
-            background: #DBEAFE;
-            color: #1E40AF;
-        }
-
-        .statut-option.traite input:checked + label {
-            border-color: #059669;
-            background: #D1FAE5;
-            color: #065F46;
-        }
-
-        .statut-option.refuse input:checked + label {
-            border-color: #DC2626;
-            background: #FEE2E2;
-            color: #991B1B;
-        }
-
-        /* ========== ERROR MESSAGE ========== */
-        .error-message {
-            background: #FEE2E2;
-            color: #DC2626;
-            padding: 1rem 1.25rem;
-            border-radius: var(--radius-md);
-            margin-bottom: 1.5rem;
-            font-size: 0.9rem;
-            border-left: 4px solid #DC2626;
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            font-weight: 500;
-        }
-
-        /* ========== CHAR COUNTER ========== */
-        .char-counter {
-            text-align: right;
-            font-size: 0.75rem;
-            color: var(--gray-500);
-            margin-top: 0.25rem;
-        }
-
-        /* ========== FORM ACTIONS ========== */
-        .form-actions {
-            display: flex;
-            gap: 1rem;
-            padding-top: 1rem;
-        }
-
-        .btn {
-            flex: 1;
-            padding: 0.875rem 1.5rem;
-            border-radius: var(--radius-md);
-            font-weight: 600;
-            text-decoration: none;
-            text-align: center;
-            transition: var(--transition-base);
-            border: none;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-            font-size: 0.95rem;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
-            color: white;
-            box-shadow: var(--shadow-primary);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 28px -8px rgba(0,109,91,0.5);
-        }
-
-        .btn-secondary {
-            background: white;
-            color: var(--gray-700);
-            border: 2px solid var(--gray-300);
-        }
-
-        .btn-secondary:hover {
-            border-color: var(--primary);
-            color: var(--primary);
-            transform: translateY(-2px);
-        }
-
-        .btn-success {
-            background: linear-gradient(135deg, var(--success) 0%, #008f5a 100%);
-            color: white;
-            box-shadow: 0 8px 20px -6px rgba(0,168,107,0.4);
-        }
-
-        .btn-success:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 28px -8px rgba(0,168,107,0.5);
-        }
-
-        /* ========== TOAST NOTIFICATION ========== */
-        .toast {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            padding: 1rem 1.5rem;
-            border-radius: var(--radius-md);
-            color: white;
-            font-weight: 500;
-            z-index: 9999;
-            animation: slideInRight 0.3s ease;
-            box-shadow: var(--shadow-lg);
-            max-width: 400px;
-        }
-
-        .toast-success {
-            background: var(--success);
-        }
-
-        @keyframes slideInRight {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-        }
-
-        @media (max-width: 640px) {
-            .form-actions { 
-                flex-direction: column; 
-            }
-            .form-title { 
-                flex-direction: column; 
-                align-items: flex-start; 
-            }
-            .statut-options {
-                grid-template-columns: repeat(2, 1fr);
-            }
-            .btn {
-                width: 100%;
-            }
-        }
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{font-family:'Inter',sans-serif;background:#f5fcf9;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:1.5rem}
+        .card{background:white;border-radius:1rem;box-shadow:0 12px 24px rgba(0,0,0,0.1);max-width:700px;width:100%;overflow:hidden}
+        .header{background:linear-gradient(135deg,#006D5B,#004D3D);color:white;padding:2rem}
+        .header a{color:rgba(255,255,255,0.8);text-decoration:none;display:inline-flex;align-items:center;gap:0.5rem;margin-bottom:1rem}
+        .header a:hover{color:white}
+        .header h1{font-size:1.5rem}
+        .badge{background:rgba(255,255,255,0.2);padding:0.3rem 1rem;border-radius:50px;font-size:0.9rem;margin-left:0.5rem}
+        .body{padding:2rem}
+        .form-group{margin-bottom:1.2rem}
+        label{display:block;font-weight:600;color:#4a5a6e;margin-bottom:0.4rem;font-size:0.9rem}
+        input,select,textarea{width:100%;padding:0.8rem;border:2px solid #d1d9e6;border-radius:0.75rem;font-size:0.95rem;font-family:'Inter',sans-serif}
+        input:focus,select:focus,textarea:focus{outline:none;border-color:#006D5B;box-shadow:0 0 0 4px rgba(0,109,91,0.1)}
+        textarea{min-height:100px;resize:vertical}
+        .statut-options{display:grid;grid-template-columns:repeat(4,1fr);gap:0.5rem}
+        .statut-options input{display:none}
+        .statut-options label{display:flex;align-items:center;justify-content:center;gap:0.3rem;padding:0.7rem 0.5rem;border:2px solid #d1d9e6;border-radius:0.5rem;cursor:pointer;font-weight:600;font-size:0.85rem;text-align:center}
+        .statut-options label:hover{border-color:#006D5B;background:#e6f4f0}
+        .statut-options input:checked+label{border-color:#006D5B;background:#e6f4f0;color:#004D3D}
+        .info{background:#e6f4f0;border-radius:0.75rem;padding:1rem;margin-bottom:1.5rem}
+        .info-row{display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;font-size:0.9rem}
+        .info-row i{color:#006D5B;width:20px}
+        .actions{display:flex;gap:1rem;margin-top:1rem}
+        .btn{flex:1;padding:0.9rem;border-radius:0.75rem;font-weight:600;font-size:0.95rem;cursor:pointer;text-decoration:none;text-align:center;border:none;display:flex;align-items:center;justify-content:center;gap:0.5rem}
+        .btn-primary{background:linear-gradient(135deg,#006D5B,#004D3D);color:white}
+        .btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,109,91,0.4)}
+        .btn-secondary{background:white;color:#4a5a6e;border:2px solid #d1d9e6}
+        .btn-success{background:linear-gradient(135deg,#00A86B,#008f5a);color:white;width:100%}
+        .btn-success:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,168,107,0.4)}
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="form-card">
-            <div class="form-header">
-                <a href="index.php" class="back-link">
-                    <i class="fas fa-arrow-left"></i> Retour au tableau de bord
-                </a>
-                <h1 class="form-title">
-                    Modifier la Demande
-                    <span class="demande-id">#<?= str_pad($id_demande, 5, '0', STR_PAD_LEFT) ?></span>
-                </h1>
+    <div class="card">
+        <div class="header">
+            <a href="index.php"><i class="fas fa-arrow-left"></i> Retour au tableau de bord</a>
+            <h1>Modifier la Demande <span class="badge">#<?= str_pad($id_demande, 5, '0', STR_PAD_LEFT) ?></span></h1>
+        </div>
+        <div class="body">
+            <div class="info">
+                <div class="info-row"><i class="fas fa-calendar-alt"></i><strong>Création :</strong> <?= date('d/m/Y H:i', strtotime($demande['date_creation'])) ?></div>
+                <div class="info-row"><i class="fas fa-clock"></i><strong>Modification :</strong> <?= $demande['date_modification'] ? date('d/m/Y H:i', strtotime($demande['date_modification'])) : 'Jamais' ?></div>
             </div>
             
-            <div class="form-body">
-                <?php if (!empty($data['errors']['general'])): ?>
-                    <div class="error-message">
-                        <i class="fas fa-exclamation-triangle"></i> <?= htmlspecialchars($data['errors']['general']) ?>
-                    </div>
-                <?php endif; ?>
-                
-                <div class="info-box">
-                    <div class="info-row">
-                        <i class="fas fa-calendar-alt info-icon"></i>
-                        <span class="info-label">Date de création :</span>
-                        <span class="info-value"><?= date('d/m/Y H:i', strtotime($demande['date_creation'])) ?></span>
-                    </div>
-                    <div class="info-row">
-                        <i class="fas fa-clock info-icon"></i>
-                        <span class="info-label">Dernière modification :</span>
-                        <span class="info-value"><?= $demande['date_modification'] ? date('d/m/Y H:i', strtotime($demande['date_modification'])) : 'Jamais' ?></span>
+            <form method="POST">
+                <div class="form-group">
+                    <label>Statut</label>
+                    <div class="statut-options">
+                        <?php foreach ($statuts as $value => $label): ?>
+                            <div>
+                                <input type="radio" id="st_<?= $value ?>" name="statut" value="<?= $value ?>" <?= $demande['statut'] == $value ? 'checked' : '' ?>>
+                                <label for="st_<?= $value ?>"><?= $label ?></label>
+                            </div>
+                        <?php endforeach; ?>
                     </div>
                 </div>
+                <div class="form-group"><label>Titre</label><input type="text" name="titre" value="<?= htmlspecialchars($demande['titre']) ?>" maxlength="255" required></div>
+                <div class="form-group"><label>Service</label>
+                    <select name="id_service" required>
+                        <option value="">-- Sélectionnez --</option>
+                        <?php foreach ($services as $s): ?>
+                            <option value="<?= $s['id_service'] ?>" <?= $demande['id_service'] == $s['id_service'] ? 'selected' : '' ?>><?= htmlspecialchars($s['nom_service']) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group"><label>Type</label>
+                    <select name="type_demande" required>
+                        <option value="">-- Sélectionnez --</option>
+                        <?php foreach ($types_demandes as $v => $l): ?>
+                            <option value="<?= $v ?>" <?= $demande['type_demande'] == $v ? 'selected' : '' ?>><?= $l ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="form-group"><label>Description</label><textarea name="description" required><?= htmlspecialchars($demande['description']) ?></textarea></div>
                 
-                <form method="POST" id="modifierForm">
-                    <!-- STATUT -->
-                    <div class="statut-selector">
-                        <div class="statut-label">
-                            <i class="fas fa-tasks"></i> Statut de la demande <span class="required">*</span>
-                        </div>
-                        <div class="statut-options">
-                            <?php foreach ($statuts as $value => $label): ?>
-                                <div class="statut-option <?= $value ?>">
-                                    <input type="radio" 
-                                           id="statut_<?= $value ?>" 
-                                           name="statut" 
-                                           value="<?= $value ?>"
-                                           <?= $demande['statut'] == $value ? 'checked' : '' ?>>
-                                    <label for="statut_<?= $value ?>">
-                                        <?= $label ?>
-                                    </label>
-                                </div>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-                    
-                    <!-- TITRE -->
-                    <div class="form-group">
-                        <label class="form-label" for="titre">
-                            Titre de la demande <span class="required">*</span>
-                        </label>
-                        <input type="text" 
-                               id="titre" 
-                               name="titre" 
-                               class="form-input" 
-                               value="<?= htmlspecialchars($demande['titre']) ?>" 
-                               maxlength="255" 
-                               required>
-                        <div class="char-counter"><span id="titreCounter">0</span>/255 caractères</div>
-                    </div>
-                    
-                    <!-- SERVICE -->
-                    <div class="form-group">
-                        <label class="form-label" for="id_service">
-                            Service concerné <span class="required">*</span>
-                        </label>
-                        <select id="id_service" name="id_service" class="form-select" required>
-                            <option value="">-- Sélectionnez un service --</option>
-                            <?php foreach ($services as $service): ?>
-                                <option value="<?= $service['id_service'] ?>"
-                                    <?= $demande['id_service'] == $service['id_service'] ? 'selected' : '' ?>>
-                                    <?= htmlspecialchars($service['nom_service']) ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    
-                    <!-- TYPE -->
-                    <div class="form-group">
-                        <label class="form-label" for="type_demande">
-                            Type de demande <span class="required">*</span>
-                        </label>
-                        <select id="type_demande" name="type_demande" class="form-select" required>
-                            <option value="">-- Sélectionnez un type --</option>
-                            <?php foreach ($types_demandes as $value => $label): ?>
-                                <option value="<?= $value ?>"
-                                    <?= $demande['type_demande'] == $value ? 'selected' : '' ?>>
-                                    <?= $label ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-                    
-                    <!-- DESCRIPTION -->
-                    <div class="form-group">
-                        <label class="form-label" for="description">
-                            Description détaillée <span class="required">*</span>
-                        </label>
-                        <textarea id="description" 
-                                  name="description" 
-                                  class="form-textarea" 
-                                  required
-                                  placeholder="Décrivez votre demande en détail..."><?= htmlspecialchars($demande['description']) ?></textarea>
-                        <div class="char-counter"><span id="descriptionCounter">0</span> caractères (minimum 20)</div>
-                    </div>
-                    
-                    <!-- ACTIONS -->
-                    <div class="form-actions">
-                        <a href="index.php" class="btn btn-secondary">
-                            <i class="fas fa-times"></i> Annuler
-                        </a>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save"></i> Enregistrer les modifications
-                        </button>
-                    </div>
-                    
-                    <!-- Bouton rapide pour marquer comme traité -->
-                    <?php if ($demande['statut'] !== 'traite'): ?>
-                    <div class="form-actions" style="margin-top: 0.75rem;">
-                        <button type="button" id="btnMarkTraite" class="btn btn-success">
-                            <i class="fas fa-check-double"></i> Marquer comme traité et enregistrer
-                        </button>
-                    </div>
-                    <?php endif; ?>
-                </form>
-            </div>
+                <div class="actions">
+                    <a href="index.php" class="btn btn-secondary"><i class="fas fa-times"></i> Annuler</a>
+                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Enregistrer</button>
+                </div>
+                
+                <?php if ($demande['statut'] !== 'traite'): ?>
+                <div style="margin-top:0.5rem;">
+                    <button type="button" id="btnTraiter" class="btn btn-success" onclick="traiter()">
+                        <i class="fas fa-check-double"></i> Marquer comme traité et envoyer SMS
+                    </button>
+                </div>
+                <?php endif; ?>
+            </form>
         </div>
     </div>
-    
     <script>
-        // Compteurs de caractères
-        const titreInput = document.getElementById('titre');
-        const descInput = document.getElementById('description');
-        
-        document.getElementById('titreCounter').textContent = titreInput.value.length;
-        titreInput.addEventListener('input', function() {
-            document.getElementById('titreCounter').textContent = this.value.length;
-        });
-        
-        document.getElementById('descriptionCounter').textContent = descInput.value.length;
-        descInput.addEventListener('input', function() {
-            document.getElementById('descriptionCounter').textContent = this.value.length;
-        });
-        
-        // Bouton rapide "Marquer comme traité"
-        const btnMarkTraite = document.getElementById('btnMarkTraite');
-        if (btnMarkTraite) {
-            btnMarkTraite.addEventListener('click', function() {
-                // Sélectionne le statut "traité"
-                document.getElementById('statut_traite').checked = true;
-                
-                // Feedback visuel
-                btnMarkTraite.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enregistrement en cours...';
-                btnMarkTraite.disabled = true;
-                
-                // Soumet le formulaire automatiquement
-                document.getElementById('modifierForm').submit();
-            });
+    function traiter(){
+        document.getElementById('st_traite').checked = true;
+        if(confirm('📱 SMS envoyé au client. Continuer ?')) document.querySelector('form').submit();
+    }
+    document.querySelector('form').addEventListener('submit', function(e){
+        var ns = document.querySelector('input[name="statut"]:checked').value;
+        if(ns === 'traite' && '<?= $demande['statut'] ?>' !== 'traite'){
+            if(!confirm('📱 SMS envoyé. Continuer ?')){ e.preventDefault(); return false; }
         }
-        
-        // Confirmation avant soumission manuelle
-        document.getElementById('modifierForm').addEventListener('submit', function(e) {
-            const nouveauStatut = document.querySelector('input[name="statut"]:checked').value;
-            const ancienStatut = '<?= $demande['statut'] ?>';
-            
-            // Si le statut a changé, on confirme
-            if (nouveauStatut !== ancienStatut) {
-                const confirme = confirm(
-                    `⚠️ Vous allez changer le statut de :\n` +
-                    `"${getStatutLabel(ancienStatut)}" → "${getStatutLabel(nouveauStatut)}"\n\n` +
-                    `Après enregistrement, vous serez redirigé vers le tableau de bord.\n\n` +
-                    `Voulez-vous continuer ?`
-                );
-                
-                if (!confirme) {
-                    e.preventDefault();
-                    return false;
-                }
-            }
-            
-            // Affiche un message de chargement
-            const submitBtn = document.querySelector('.btn-primary');
-            if (submitBtn) {
-                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enregistrement...';
-                submitBtn.disabled = true;
-            }
-        });
-        
-        function getStatutLabel(statut) {
-            const labels = {
-                'en_attente': '⏳ En attente',
-                'en_cours': '🔄 En cours',
-                'traite': '✅ Traité',
-                'refuse': '❌ Refusé'
-            };
-            return labels[statut] || statut;
-        }
-        
-        // Raccourci Échap pour annuler et retourner au backoffice
-        document.addEventListener('keydown', function(e) { 
-            if (e.key === 'Escape') {
-                if (confirm('Voulez-vous annuler les modifications et retourner au tableau de bord ?')) {
-                    window.location.href = 'index.php';
-                }
-            }
-        });
+        this.querySelector('.btn-primary').innerHTML = '<i class="fas fa-spinner fa-spin"></i> Enregistrement...';
+    });
     </script>
 </body>
 </html>
