@@ -20,6 +20,7 @@ $list = $ctrl->getReclamationByCitoyen($_SESSION['user_id']);
     <title>InnoGov - Services Municipaux Digitalisés</title>
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
         * {
             margin: 0;
@@ -27,11 +28,36 @@ $list = $ctrl->getReclamationByCitoyen($_SESSION['user_id']);
             box-sizing: border-box;
         }
 
+        :root {
+            --bg-color: #F5FCF9;
+            --text-color: #1A2E2A;
+            --card-bg: white;
+            --nav-bg: rgba(245, 252, 249, 0.95);
+            --border-color: #E5E7EB;
+            --th-bg: #F0FDF4;
+            --th-color: #006D5B;
+            --td-border: #E5E7EB;
+            --nav-link-color: #2C5A4F;
+        }
+
+        [data-theme="dark"] {
+            --bg-color: #0f172a;
+            --text-color: #f8fafc;
+            --card-bg: #1e293b;
+            --nav-bg: rgba(15, 23, 42, 0.95);
+            --border-color: #334155;
+            --th-bg: #0f172a;
+            --th-color: #38bdf8;
+            --td-border: #334155;
+            --nav-link-color: #94a3b8;
+        }
+
         body {
             font-family: 'DM Sans', sans-serif;
-            background: #F5FCF9;
-            color: #1A2E2A;
+            background: var(--bg-color);
+            color: var(--text-color);
             min-height: 100vh;
+            transition: background-color 0.3s ease, color 0.3s ease;
         }
 
         /* ========== SLIDESHOW BACKGROUND ========== */
@@ -111,8 +137,16 @@ $list = $ctrl->getReclamationByCitoyen($_SESSION['user_id']);
 
         /* ========== NAVBAR ========== */
         .navbar {
-            background: rgba(245, 252, 249, 0.95);
+            background: var(--nav-bg);
             backdrop-filter: blur(10px);
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+            transition: background-color 0.3s ease;
+        }
             position: fixed;
             top: 0;
             width: 100%;
@@ -170,7 +204,7 @@ $list = $ctrl->getReclamationByCitoyen($_SESSION['user_id']);
 
         .nav-link {
             text-decoration: none;
-            color: #2C5A4F;
+            color: var(--nav-link-color);
             font-weight: 500;
             transition: all 0.3s;
         }
@@ -179,12 +213,17 @@ $list = $ctrl->getReclamationByCitoyen($_SESSION['user_id']);
             color: #006D5B;
         }
 
+        [data-theme="dark"] .nav-link:hover {
+            color: #38bdf8;
+        }
+
         .lang-toggle {
             display: flex;
             gap: 5px;
-            background: #EBF7F3;
+            background: var(--card-bg);
             padding: 5px 10px;
             border-radius: 30px;
+            border: 1px solid var(--border-color);
         }
 
         .lang-btn {
@@ -201,7 +240,22 @@ $list = $ctrl->getReclamationByCitoyen($_SESSION['user_id']);
             color: white;
         }
 
-        /* ========== BOUTONS ========== */
+        /* ========== BOUTONS ET THEME ========== */
+        .theme-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: var(--text-color);
+            transition: color 0.3s;
+        }
+        .theme-btn:hover {
+            color: #006D5B;
+        }
+        [data-theme="dark"] .theme-btn:hover {
+            color: #38bdf8;
+        }
+
         .btn {
             display: inline-flex;
             align-items: center;
@@ -235,69 +289,69 @@ $list = $ctrl->getReclamationByCitoyen($_SESSION['user_id']);
             transform: translateY(-3px);
         }
 
-        /* ========== CARTE MES RÉCLAMATIONS ========== */
+        /* ========== SECTION MES RÉCLAMATIONS (CARDS + SLIDESHOW) ========== */
         .reclamations-section {
-            background: white;
+            position: relative;
+            padding: 60px 20px;
+            overflow: hidden;
+            min-height: 500px;
+        }
+
+        .rec-slideshow { position: absolute; inset: 0; z-index: 0; }
+        .rec-slideshow .slide { position: absolute; inset: 0; background-size: cover; background-position: center; opacity: 0; transition: opacity 1.5s ease; }
+        .rec-slideshow .slide.active { opacity: 1; }
+        .rec-overlay { position: absolute; inset: 0; background: linear-gradient(135deg, rgba(0,77,61,0.85) 0%, rgba(0,20,15,0.92) 100%); z-index: 1; }
+
+        .rec-content { position: relative; z-index: 2; max-width: 1200px; margin: 0 auto; }
+
+        .rec-header { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 35px; }
+        .rec-header h2 { font-size: 28px; font-weight: 800; color: white; font-family: 'Syne', sans-serif; }
+
+        .search-container {
+            display: flex;
+            align-items: center;
+            background: rgba(255,255,255,0.15);
+            border: 1px solid rgba(255,255,255,0.3);
+            backdrop-filter: blur(10px);
             border-radius: 30px;
-            margin: 40px auto;
-            padding: 30px;
-            max-width: 1200px;
-            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
-        }
-
-        .reclamations-section h2 {
-            font-size: 24px;
-            color: #006D5B;
-            margin-bottom: 20px;
-        }
-
-        .table {
+            padding: 10px 18px;
             width: 100%;
-            border-collapse: collapse;
+            max-width: 350px;
         }
+        .search-container i { color: rgba(255,255,255,0.8); margin-right: 10px; }
+        .search-input { border: none; background: transparent; outline: none; width: 100%; font-family: 'DM Sans', sans-serif; font-size: 14px; color: white; }
+        .search-input::placeholder { color: rgba(255,255,255,0.6); }
 
-        .table th {
-            text-align: left;
-            padding: 15px;
-            background: #F0FDF4;
-            color: #006D5B;
-        }
+        .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
 
-        .table td {
-            padding: 15px;
-            border-bottom: 1px solid #E5E7EB;
-        }
-
-        .badge {
-            padding: 5px 12px;
+        .rec-card {
+            background: rgba(255,255,255,0.1);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255,255,255,0.2);
             border-radius: 20px;
-            font-size: 12px;
-            font-weight: 600;
+            padding: 22px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
         }
-        .badge-soumise { background: #FEF3C7; color: #92400E; }
-        .badge-en_cours { background: #DBEAFE; color: #1E40AF; }
-        .badge-traitee { background: #D1FAE5; color: #065F46; }
-        .badge-rejetee { background: #FEE2E2; color: #991B1B; }
+        .rec-card:hover { transform: translateY(-6px); box-shadow: 0 20px 40px rgba(0,0,0,0.3); border-color: rgba(255,255,255,0.4); }
+        .rec-card-ref { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.55); text-transform: uppercase; letter-spacing: 1px; }
+        .rec-card-objet { font-size: 17px; font-weight: 700; color: white; line-height: 1.4; }
+        .rec-card-footer { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; margin-top: auto; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.15); }
+        .rec-card-date { font-size: 12px; color: rgba(255,255,255,0.55); }
 
-        .btn-sm {
-            display: inline-block;
-            padding: 6px 12px;
-            font-size: 12px;
-            background: #006D5B;
-            color: white;
-            border-radius: 8px;
-            text-decoration: none;
-        }
+        .badge { padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 700; }
+        .badge-soumise  { background: rgba(253,230,138,0.2); color: #FDE68A; border: 1px solid rgba(253,230,138,0.35); }
+        .badge-en_cours { background: rgba(147,197,253,0.2); color: #93C5FD; border: 1px solid rgba(147,197,253,0.35); }
+        .badge-traitee  { background: rgba(110,231,183,0.2); color: #6EE7B7; border: 1px solid rgba(110,231,183,0.35); }
+        .badge-rejetee  { background: rgba(252,165,165,0.2); color: #FCA5A5; border: 1px solid rgba(252,165,165,0.35); }
 
-        .btn-deposer {
-            display: inline-block;
-            margin-top: 20px;
-            background: #006D5B;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 30px;
-            text-decoration: none;
-        }
+        .btn-sm { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; font-size: 12px; font-weight: 600; background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 30px; text-decoration: none; transition: background 0.2s; }
+        .btn-sm:hover { background: rgba(255,255,255,0.28); }
+
+        .btn-deposer { display: inline-block; margin-top: 20px; background: rgba(255,255,255,0.15); color: white; padding: 12px 28px; border-radius: 30px; border: 2px solid rgba(255,255,255,0.4); text-decoration: none; font-weight: 600; transition: all 0.3s; }
+        .btn-deposer:hover { background: rgba(255,255,255,0.25); }
 
         /* ========== FOOTER ========== */
         .footer {
@@ -363,6 +417,9 @@ $list = $ctrl->getReclamationByCitoyen($_SESSION['user_id']);
             <a href="mes-reclamations.php" class="nav-link">Accueil</a>
             <a href="mes-reclamations.php" class="nav-link">Réclamation</a>
             <a href="../REPONSE/voir.php" class="nav-link">Réponse</a>
+            <button class="theme-btn" id="themeToggle" title="Changer le thème">
+                <i class="fas fa-moon"></i>
+            </button>
             <div class="lang-toggle">
                 <button class="lang-btn active" data-lang="fr">FR</button>
                 <button class="lang-btn" data-lang="ar">عربي</button>
@@ -391,42 +448,57 @@ $list = $ctrl->getReclamationByCitoyen($_SESSION['user_id']);
 </section>
 
 <!-- SECTION MES RÉCLAMATIONS -->
-<div class="reclamations-section">
-    <h2><i class="fas fa-list-alt"></i> Mes réclamations</h2>
-    
-    <?php if(empty($list)): ?>
-        <div style="text-align: center; padding: 40px; color: #9CA3AF;">
-            <i class="fas fa-inbox fa-3x" style="margin-bottom: 15px; opacity: 0.3;"></i>
-            <p>Aucune réclamation pour le moment</p>
-            <a href="ajouter.php" class="btn-deposer">📝 Déposer une réclamation</a>
+<section class="reclamations-section">
+    <!-- Slideshow background -->
+    <div class="rec-slideshow" id="recSlideshow">
+        <div class="slide active" style="background-image: url('/PROJETFIXE_v2/ASSETS/images/tunisia1.jpg');"></div>
+        <div class="slide" style="background-image: url('/PROJETFIXE_v2/ASSETS/images/tunisia2.jpg');"></div>
+        <div class="slide" style="background-image: url('/PROJETFIXE_v2/ASSETS/images/tunisia3.jpg');"></div>
+        <div class="slide" style="background-image: url('/PROJETFIXE_v2/ASSETS/images/tunisia4.jpg');"></div>
+    </div>
+    <div class="rec-overlay"></div>
+
+    <div class="rec-content">
+        <div class="rec-header">
+            <h2><i class="fas fa-list-alt"></i> Mes Réclamations</h2>
+            <?php if(!empty($list)): ?>
+            <div class="search-container">
+                <i class="fas fa-search"></i>
+                <input type="text" class="search-input" id="searchInput" placeholder="Rechercher..." oninput="filterCards()">
+            </div>
+            <?php endif; ?>
         </div>
-    <?php else: ?>
-        <div style="overflow-x: auto;">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Référence</th>
-                        <th>Objet</th>
-                        <th>Statut</th>
-                        <th>Date</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php foreach($list as $r): ?>
-                    <tr>
-                        <td><strong><?= htmlspecialchars($r['reference']) ?></strong></td>
-                        <td><?= htmlspecialchars(substr($r['objet'], 0, 50)) ?>...</td>
-                        <td><span class="badge badge-<?= $r['statut'] ?>"><?= ucfirst($r['statut']) ?></span></td>
-                        <td><?= date('d/m/Y', strtotime($r['date_soumission'])) ?></td>
-                        <td><a href="../REPONSE/voir.php?id_reclamation=<?= $r['id_reclamation'] ?>" class="btn-sm"><i class="fas fa-eye"></i> Voir réponse</a></td>
-                    </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
-    <?php endif; ?>
-</div>
+
+        <?php if(empty($list)): ?>
+            <div style="text-align: center; padding: 60px; color: rgba(255,255,255,0.7);">
+                <i class="fas fa-inbox fa-4x" style="margin-bottom: 20px; opacity: 0.5; display: block;"></i>
+                <p style="font-size: 18px; margin-bottom: 20px;">Aucune réclamation pour le moment</p>
+                <a href="ajouter.php" class="btn-deposer">📝 Déposer une réclamation</a>
+            </div>
+        <?php else: ?>
+            <div class="cards-grid" id="cardsGrid">
+                <?php foreach($list as $r): ?>
+                <div class="rec-card" data-search="<?= strtolower(htmlspecialchars($r['reference'] . ' ' . $r['objet'] . ' ' . $r['statut'])) ?>">
+                    <div class="rec-card-ref"><i class="fas fa-hashtag"></i> <?= htmlspecialchars($r['reference']) ?></div>
+                    <div class="rec-card-objet"><?= htmlspecialchars($r['objet']) ?></div>
+                    <div class="rec-card-footer">
+                        <div>
+                            <span class="badge badge-<?= $r['statut'] ?>"><?= ucfirst(str_replace('_',' ',$r['statut'])) ?></span>
+                        </div>
+                        <div class="rec-card-date"><i class="far fa-calendar-alt"></i> <?= date('d/m/Y', strtotime($r['date_soumission'])) ?></div>
+                    </div>
+                    <a href="../REPONSE/voir.php?id_reclamation=<?= $r['id_reclamation'] ?>" class="btn-sm">
+                        <i class="fas fa-eye"></i> Voir la réponse
+                    </a>
+                </div>
+                <?php endforeach; ?>
+            </div>
+            <div style="text-align:center; margin-top: 30px;">
+                <a href="ajouter.php" class="btn-deposer">➕ Nouvelle réclamation</a>
+            </div>
+        <?php endif; ?>
+    </div>
+</section>
 
 <!-- FOOTER -->
 <footer class="footer">
@@ -475,6 +547,102 @@ $list = $ctrl->getReclamationByCitoyen($_SESSION['user_id']);
             }
         });
     });
+
+    // Dark Mode Toggle
+    const themeToggleBtn = document.getElementById('themeToggle');
+    const htmlElement = document.documentElement;
+    const themeIcon = themeToggleBtn.querySelector('i');
+
+    // Vérifier le thème sauvegardé
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'dark') {
+        htmlElement.setAttribute('data-theme', 'dark');
+        themeIcon.classList.replace('fa-moon', 'fa-sun');
+    }
+
+    themeToggleBtn.addEventListener('click', () => {
+        // Fonction vocale
+        function dire(texte) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                let msg = new SpeechSynthesisUtterance(texte);
+                msg.lang = 'en-US'; // Prononciation en anglais pour "Night" et "Light"
+                msg.volume = 1;
+                window.speechSynthesis.speak(msg);
+            }
+        }
+
+        if (htmlElement.getAttribute('data-theme') === 'dark') {
+            htmlElement.removeAttribute('data-theme');
+            localStorage.setItem('theme', 'light');
+            themeIcon.classList.replace('fa-sun', 'fa-moon');
+            dire("Light");
+            
+            Swal.fire({
+                title: 'Mode Clair Activé ☀️',
+                text: 'L\'interface est passée en mode clair.',
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false,
+                toast: true,
+                position: 'top-end'
+            });
+        } else {
+            htmlElement.setAttribute('data-theme', 'dark');
+            localStorage.setItem('theme', 'dark');
+            themeIcon.classList.replace('fa-moon', 'fa-sun');
+            dire("Night");
+            
+            Swal.fire({
+                title: 'Mode Sombre Activé 🌙',
+                text: 'L\'interface est passée en mode sombre.',
+                icon: 'success',
+                timer: 2000,
+                showConfirmButton: false,
+                toast: true,
+                position: 'top-end',
+                background: '#1e293b',
+                color: '#f8fafc'
+            });
+        }
+    });
+
+    // Slideshow Section Réclamations
+    const recSlides = document.querySelectorAll('#recSlideshow .slide');
+    if (recSlides.length > 0) {
+        let recCurrent = 0;
+        setInterval(() => {
+            recSlides[recCurrent].classList.remove('active');
+            recCurrent = (recCurrent + 1) % recSlides.length;
+            recSlides[recCurrent].classList.add('active');
+        }, 3000);
+    }
+
+    // Recherche intelligente dans les cartes (ID exact ou globale)
+    function filterCards() {
+        const input = document.getElementById('searchInput');
+        if (!input) return;
+        const filter = input.value.toLowerCase().trim();
+        const cards = document.querySelectorAll('.rec-card');
+        
+        let isIdSearch = /^#?\d+$/.test(filter);
+        let cleanFilter = filter.replace('#', '');
+
+        cards.forEach(card => {
+            if (isIdSearch) {
+                // Recherche exacte par référence/ID
+                const refEl = card.querySelector('.rec-card-ref');
+                if (refEl) {
+                    let refText = refEl.textContent.replace(/\D/g, ''); // Extraction des chiffres
+                    card.style.display = (refText === cleanFilter) ? '' : 'none';
+                }
+            } else {
+                // Recherche globale classique
+                const text = card.getAttribute('data-search') || '';
+                card.style.display = text.includes(filter) ? '' : 'none';
+            }
+        });
+    }
 </script>
 
 </body>

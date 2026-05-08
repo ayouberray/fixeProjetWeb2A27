@@ -101,7 +101,6 @@ class ReponseController {
         }
     }
 
-    // Récupérer TOUTES les réponses (pour le backoffice)
     public function getAllReponses() {
         $sql = "SELECT r.*, rec.reference as ref_reclamation, rec.objet as objet_reclamation 
                 FROM reponse r 
@@ -118,7 +117,6 @@ class ReponseController {
         }
     }
 
-    // Récupérer les réponses d'une réclamation spécifique
     public function getReponsesByReclamation($id_reclamation) {
         $sql = "SELECT * FROM reponse WHERE id_reclamation = :id_reclamation ORDER BY date_reponse ASC";
         $db = Config::getConnexion();

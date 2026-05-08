@@ -45,9 +45,15 @@ $reponses = $ctrl->getAllReponses();
         
         .table-wrapper { overflow-x: auto; }
         .table { width: 100%; border-collapse: collapse; }
-        .table th { text-align: left; padding: 12px 15px; background: #F9FAFB; color: #6B7280; font-weight: 600; font-size: 13px; }
+        .table th { text-align: left; padding: 12px 15px; background: #F9FAFB; color: #6B7280; font-weight: 600; font-size: 13px; cursor: pointer; user-select: none; transition: background 0.2s; }
+        .table th:hover { background: #F3F4F6; color: #006D5B; }
+        .table th i { margin-left: 5px; font-size: 11px; color: #9CA3AF; }
         .table td { padding: 12px 15px; border-bottom: 1px solid #F0F0F0; font-size: 14px; }
         .table tr:hover td { background: #F9FAFB; }
+        
+        .search-container { display: flex; align-items: center; background: #F3F4F6; border-radius: 8px; padding: 6px 12px; margin-left: auto; width: 300px; }
+        .search-container i { color: #6B7280; margin-right: 8px; }
+        .search-input { border: none; background: transparent; outline: none; width: 100%; font-family: 'DM Sans', sans-serif; font-size: 13px; }
         
         .badge { padding: 4px 10px; border-radius: 30px; font-size: 11px; font-weight: 600; display: inline-block; }
         .badge-info { background: #DBEAFE; color: #1E40AF; }
@@ -95,17 +101,23 @@ $reponses = $ctrl->getAllReponses();
         <div class="card">
             <div class="card-header">
                 <h2 class="card-title"><i class="fas fa-list"></i> Liste des réponses</h2>
+                <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center; flex: 1; justify-content: flex-end;">
+                    <div class="search-container">
+                        <i class="fas fa-search"></i>
+                        <input type="text" class="search-input" id="searchInput" placeholder="Rechercher une réponse..." onkeyup="searchTable()">
+                    </div>
+                </div>
             </div>
             <div class="card-body">
                 <div class="table-wrapper">
-                    <table class="table">
+                    <table class="table" id="dataTable">
                         <thead>
                             <tr>
-                                <th>ID</th>
-                                <th>Réf. Réclamation</th>
-                                <th>Agent</th>
-                                <th>Type</th>
-                                <th>Date</th>
+                                <th onclick="sortTable(0)">ID <i class="fas fa-sort"></i></th>
+                                <th onclick="sortTable(1)">Réf. Réclamation <i class="fas fa-sort"></i></th>
+                                <th onclick="sortTable(2)">Agent <i class="fas fa-sort"></i></th>
+                                <th onclick="sortTable(3)">Type <i class="fas fa-sort"></i></th>
+                                <th onclick="sortTable(4)">Date <i class="fas fa-sort"></i></th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -155,6 +167,109 @@ $reponses = $ctrl->getAllReponses();
             currentSlide = (currentSlide + 1) % slides.length;
             showSlide(currentSlide);
         }, 3000);
+    }
+
+    // Recherche intelligente dans le tableau (ID exact ou recherche globale)
+    function searchTable() {
+        let input = document.getElementById("searchInput");
+        let filter = input.value.toUpperCase().trim();
+        let table = document.getElementById("dataTable");
+        let tr = table.getElementsByTagName("tr");
+
+        // Détecter si on recherche spécifiquement un ID (commence par # ou est un nombre exact)
+        let isIdSearch = /^#?\d+$/.test(filter);
+        let cleanFilter = filter.replace('#', '');
+
+        for (let i = 1; i < tr.length; i++) {
+            let tds = tr[i].getElementsByTagName("td");
+            if (tds.length > 0) {
+                let match = false;
+
+                if (isIdSearch) {
+                    // Recherche exacte dans la première colonne (ID)
+                    let idText = tds[0].textContent || tds[0].innerText;
+                    let cleanId = idText.replace(/\D/g, ''); // Garder uniquement les chiffres
+                    
+                    if (cleanId === cleanFilter) {
+                        match = true;
+                    }
+                } else {
+                    // Recherche classique globale sur toute la ligne
+                    let rowText = tr[i].textContent || tr[i].innerText;
+                    if (rowText.toUpperCase().indexOf(filter) > -1) {
+                        match = true;
+                    }
+                }
+
+                tr[i].style.display = match ? "" : "none";
+            }
+        }
+    }
+
+    // Tri des colonnes du tableau (Alphabétique et Numérique)
+    let sortDirections = {};
+    function sortTable(n) {
+        let table, rows, switching, i, x, y, shouldSwitch;
+        table = document.getElementById("dataTable");
+        switching = true;
+        
+        // Déterminer la direction de tri pour cette colonne (croissant par défaut)
+        sortDirections[n] = sortDirections[n] === 'asc' ? 'desc' : 'asc';
+        let isAsc = sortDirections[n] === 'asc';
+        
+        let headers = table.getElementsByTagName("th");
+        for(let j=0; j<headers.length-1; j++) {
+            headers[j].innerHTML = headers[j].innerHTML.replace(/fa-sort-(up|down)/, 'fa-sort');
+        }
+        
+        if(isAsc) {
+            headers[n].innerHTML = headers[n].innerHTML.replace('fa-sort', 'fa-sort-up');
+        } else {
+            headers[n].innerHTML = headers[n].innerHTML.replace('fa-sort', 'fa-sort-down');
+        }
+
+        while (switching) {
+            switching = false;
+            rows = table.rows;
+            for (i = 1; i < (rows.length - 1); i++) {
+                shouldSwitch = false;
+                x = rows[i].getElementsByTagName("TD")[n];
+                y = rows[i + 1].getElementsByTagName("TD")[n];
+                
+                // Récupérer le texte propre
+                let cmpX = x.textContent || x.innerText;
+                let cmpY = y.textContent || y.innerText;
+                cmpX = cmpX.trim();
+                cmpY = cmpY.trim();
+                
+                // Gestion spécifique pour les dates au format JJ/MM/AAAA ou JJ/MM/AAAA HH:MM:SS
+                let dateRegex = /^(\d{2})\/(\d{2})\/(\d{4})/;
+                let isDate = dateRegex.test(cmpX) && dateRegex.test(cmpY);
+                
+                let comparison = 0;
+                
+                if (isDate) {
+                    let px = cmpX.match(dateRegex);
+                    let py = cmpY.match(dateRegex);
+                    let dx = new Date(px[3], px[2] - 1, px[1]);
+                    let dy = new Date(py[3], py[2] - 1, py[1]);
+                    comparison = dx - dy;
+                } else {
+                    // Comparaison intelligente : gère l'alphabet et les nombres de façon naturelle
+                    comparison = cmpX.localeCompare(cmpY, undefined, { numeric: true, sensitivity: 'base' });
+                }
+
+                if (isAsc) {
+                    if (comparison > 0) { shouldSwitch = true; break; }
+                } else {
+                    if (comparison < 0) { shouldSwitch = true; break; }
+                }
+            }
+            if (shouldSwitch) {
+                rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                switching = true;
+            }
+        }
     }
 </script>
 </body>

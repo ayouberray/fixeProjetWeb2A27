@@ -49,6 +49,7 @@ $reponses = $repCtrl->getReponsesByReclamation($id_reclamation);
     <title>InnoGov - Conversation #<?= htmlspecialchars($reclamation['reference']) ?></title>
     <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'DM Sans', sans-serif; background: #F5FCF9; color: #1A2E2A; }
@@ -106,6 +107,13 @@ $reponses = $repCtrl->getReponsesByReclamation($id_reclamation);
         
         .info-message { text-align: center; padding: 15px; background: #E6F4F0; border-radius: 12px; margin: 20px 0; color: #006D5B; font-size: 13px; }
         
+        .barcode-container { background: white; padding: 10px; border-radius: 10px; text-align: center; display: inline-flex; flex-direction: column; align-items: center; justify-content: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .barcode-container #qrcode img { border-radius: 4px; }
+        
+        .tts-btn { background: none; border: none; color: #006D5B; cursor: pointer; font-size: 16px; margin-left: 10px; padding: 5px; border-radius: 50%; transition: all 0.2s; }
+        .tts-btn:hover { background: rgba(0,109,91,0.1); transform: scale(1.1); }
+        .message.admin .tts-btn { color: #006D5B; }
+        
         @media (max-width: 768px) { 
             .navbar-container { flex-direction: column; text-align: center; } 
             .message { max-width: 95%; } 
@@ -135,9 +143,15 @@ $reponses = $repCtrl->getReponsesByReclamation($id_reclamation);
 <div class="container">
     <a href="../RECLAMATION/mes-reclamations.php" class="btn-back"><i class="fas fa-arrow-left"></i> Retour à la liste</a>
     
-    <div class="chat-header">
-        <h2>💬 Conversation #<?= htmlspecialchars($reclamation['reference']) ?></h2>
-        <p><?= htmlspecialchars($reclamation['objet']) ?></p>
+    <div class="chat-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 20px;">
+        <div>
+            <h2>💬 Conversation #<?= htmlspecialchars($reclamation['reference']) ?></h2>
+            <p><?= htmlspecialchars($reclamation['objet']) ?></p>
+        </div>
+        <div class="barcode-container" title="QR Code à scanner en agence">
+            <div id="qrcode"></div>
+            <div style="font-size: 11px; color: #6B7280; font-weight: 600; margin-top: 5px;">QR TICKET</div>
+        </div>
     </div>
     
     <div class="chat-body" id="chatBody">
@@ -167,8 +181,15 @@ $reponses = $repCtrl->getReponsesByReclamation($id_reclamation);
             <?php else: ?>
                 <div class="message admin">
                     <div class="message-bubble">
-                        <strong><i class="fas fa-user-tie"></i> <?= htmlspecialchars($rep['nom_agent']) ?></strong><br>
-                        <?= nl2br(htmlspecialchars($rep['contenu'])) ?>
+                        <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                            <strong><i class="fas fa-user-tie"></i> <?= htmlspecialchars($rep['nom_agent']) ?></strong>
+                            <button class="tts-btn" onclick="lireMessage(`<?= addslashes(htmlspecialchars($rep['contenu'])) ?>`)" title="Écouter la réponse">
+                                <i class="fas fa-volume-up"></i>
+                            </button>
+                        </div>
+                        <div style="margin-top: 8px;">
+                            <?= nl2br(htmlspecialchars($rep['contenu'])) ?>
+                        </div>
                         <?php if($rep['decision']): ?>
                             <div style="margin-top: 8px; padding-top: 8px; border-top: 1px dashed #D1D5DB;">
                                 📋 Décision : <?= htmlspecialchars($rep['decision']) ?>
@@ -250,6 +271,34 @@ $reponses = $repCtrl->getReponsesByReclamation($id_reclamation);
             currentSlide = (currentSlide + 1) % slides.length;
             showSlide(currentSlide);
         }, 3000);
+    }
+
+    // Génération du QR Code
+    new QRCode(document.getElementById("qrcode"), {
+        text: "<?= htmlspecialchars($reclamation['reference']) ?>",
+        width: 64,
+        height: 64,
+        colorDark : "#006D5B",
+        colorLight : "#ffffff",
+        correctLevel : QRCode.CorrectLevel.H
+    });
+
+    // Lecture Vocale (Text-to-Speech)
+    function lireMessage(texte) {
+        // Arrêter la lecture en cours s'il y en a une
+        window.speechSynthesis.cancel();
+        
+        if ('speechSynthesis' in window) {
+            const utterance = new SpeechSynthesisUtterance(texte);
+            utterance.lang = 'fr-FR'; // Langue française
+            utterance.rate = 1; // Vitesse normale
+            utterance.pitch = 1; // Tonalité normale
+            
+            // Lancer la lecture
+            window.speechSynthesis.speak(utterance);
+        } else {
+            alert("Votre navigateur ne supporte pas la lecture vocale.");
+        }
     }
 </script>
 
