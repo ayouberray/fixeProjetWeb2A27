@@ -107,6 +107,97 @@ if ($statistiques !== null) {
 }
 ?>
 
+<div class="dashboard-header">
+    <div>
+        <span class="page-badge">Tableau de bord</span>
+        <h2>Vue d'ensemble des performances</h2>
+        <p class="page-description">Analyse de la croissance, de l'engagement et du volume des inscriptions pour piloter l'activité du backoffice.</p>
+    </div>
+    <div class="period-switch">
+        <?php foreach(['7days' => '7 jours', '30days' => '30 jours', '90days' => '90 jours', '365days' => '12 mois'] as $key => $label): ?>
+            <a href="?page=dashboard&period=<?= $key ?>" class="period-chip <?= $period === $key ? 'active' : '' ?>"><?= $label ?></a>
+        <?php endforeach; ?>
+    </div>
+</div>
+
+<div class="dashboard-hero">
+    <div class="dashboard-hero-card">
+        <div class="hero-top">
+            <span class="hero-tag">Performance globale</span>
+            <div class="hero-icon"><i class="fas fa-tachometer-alt"></i></div>
+        </div>
+        <h3 class="hero-value"><?= number_format($totalUsers) ?></h3>
+        <p class="hero-text">Total d'utilisateurs inscrits sur la plateforme.</p>
+        <div class="hero-stats">
+            <div>
+                <span class="hero-number"><?= $engagementRate ?>%</span>
+                <span class="hero-label">Engagement</span>
+            </div>
+            <div>
+                <span class="hero-number"><?= number_format($activeUsers) ?></span>
+                <span class="hero-label">Actifs</span>
+            </div>
+            <div>
+                <span class="hero-number <?= $growthClass ?>"><?= $growthPercentage >= 0 ? '+' : '' ?><?= $growthPercentage ?>%</span>
+                <span class="hero-label">Croissance</span>
+            </div>
+        </div>
+        <div class="hero-footer">
+            <span>Comparaison : <?= $comparisonLabel ?></span>
+        </div>
+    </div>
+    <div class="dashboard-summary-cards">
+        <div class="summary-card summary-card--green">
+            <div class="summary-title">Nouvelles inscriptions</div>
+            <div class="summary-value"><?= number_format($currentPeriod) ?></div>
+            <div class="summary-meta">Période : <?= $periodLabel ?></div>
+        </div>
+        <div class="summary-card summary-card--blue">
+            <div class="summary-title">Profil complet</div>
+            <div class="summary-value"><?= $completionRate ?>%</div>
+            <div class="summary-meta">Taux de complétion</div>
+        </div>
+        <div class="summary-card summary-card--purple">
+            <div class="summary-title">Taux de conversion</div>
+            <div class="summary-value"><?= $tauxConversion ?>%</div>
+            <div class="summary-meta">Valeur estimée</div>
+        </div>
+    </div>
+</div>
+
+<div class="circle-stats">
+    <div class="circle-card">
+        <div class="circle-ring">
+            <span><?= $engagementRate ?>%</span>
+        </div>
+        <div class="circle-info">
+            <span class="circle-label">Taux d'engagement</span>
+            <p>Proportion d'utilisateurs actifs.</p>
+        </div>
+        <div class="line-metric"><span></span><span></span><span></span><span></span></div>
+    </div>
+    <div class="circle-card circle-card--secondary">
+        <div class="circle-ring">
+            <span><?= $completionRate ?>%</span>
+        </div>
+        <div class="circle-info">
+            <span class="circle-label">Complétion de profil</span>
+            <p>Profils entièrement remplis.</p>
+        </div>
+        <div class="line-metric"><span></span><span></span><span></span><span></span></div>
+    </div>
+    <div class="circle-card circle-card--accent">
+        <div class="circle-ring">
+            <span><?= $growthPercentage >= 0 ? '+' : '' ?><?= $growthPercentage ?>%</span>
+        </div>
+        <div class="circle-info">
+            <span class="circle-label">Croissance</span>
+            <p><?= $comparisonLabel ?>.</p>
+        </div>
+        <div class="line-metric"><span></span><span></span><span></span><span></span></div>
+    </div>
+</div>
+
 <!-- Statistiques principales -->
 <div class="stats-grid">
     <div class="stat-card">

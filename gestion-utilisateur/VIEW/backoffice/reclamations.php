@@ -1,5 +1,9 @@
 ﻿<?php
-session_start();
+// Vérifier si la session est déjà démarrée
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 if (!isset($_SESSION['user_role']) || ($_SESSION['user_role'] !== 'admin' && $_SESSION['user_role'] !== 'agent')) {
     header('Location: ../frontoffice/login.php');
     exit();

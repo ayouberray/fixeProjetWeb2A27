@@ -7,6 +7,8 @@
     <title>innoGov | Connexion</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <!-- hCaptcha -->
+    <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
     <style>
 .slideshow-bg {
   position: fixed;
@@ -203,6 +205,46 @@ textarea:focus {
   box-shadow: 0 0 0 3px rgba(0, 109, 91, 0.12);
 }
 
+input.valid {
+  border-color: #22C55E;
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%2322C55E"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 18px;
+  padding-right: 38px;
+}
+
+input.invalid {
+  border-color: #EF4444;
+  background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23EF4444"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 18px;
+  padding-right: 38px;
+}
+
+.error-message {
+  color: #EF4444;
+  font-size: 0.75rem;
+  margin-top: 5px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.error-message::before {
+  content: "";
+  font-size: 0.7rem;
+}
+
+/* Style pour hCaptcha */
+.h-captcha {
+    display: flex;
+    justify-content: center;
+    margin: 20px 0;
+    min-height: 78px;
+}
+
 .btn-submit {
   background: #006D5B;
   color: white;
@@ -215,9 +257,15 @@ textarea:focus {
   width: 100%;
 }
 
-.btn-submit:hover {
+.btn-submit:hover:not(:disabled) {
   background: #004D3D;
   transform: translateY(-2px);
+}
+
+.btn-submit:disabled {
+  background: #94A3B8;
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .register-link {
@@ -301,11 +349,18 @@ textarea:focus {
   .btn-secondary {
     width: 100%;
   }
+  .h-captcha {
+    transform: scale(0.9);
+    transform-origin: center;
+  }
 }
 
 @media (max-width: 600px) {
   .logo-text {
     font-size: 1.25rem;
+  }
+  .h-captcha {
+    transform: scale(0.8);
   }
 }
     </style>
@@ -354,17 +409,31 @@ textarea:focus {
 
         <form id="loginForm" method="POST" action="../../CONTROLLER/AuthController.php">
             <input type="hidden" name="action" value="login">
+            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES) ?>">
             <div class="form-group">
                 <label>Email</label>
-                <input type="text" id="email" name="email" placeholder="exemple@email.com">
+                <input type="email" id="email" name="email" placeholder="exemple@email.com" autocomplete="email">
                 <div class="error-message" id="emailError"></div>
             </div>
             <div class="form-group">
                 <label>Mot de passe</label>
-                <input type="text" id="password" name="password" placeholder="••••••••">
+                <input type="password" id="password" name="password" placeholder="••••••••" autocomplete="current-password">
                 <div class="error-message" id="passwordError"></div>
             </div>
+            
+            <!-- hCaptcha - PUZZLES D'IMAGES SYSTÉMATIQUES -->
+            <div class="form-group">
+                <div id="h-captcha" class="h-captcha" data-sitekey="e89e7ebe-c40c-4b02-97ec-dd64a428d36a" data-callback="hcaptchaSuccess" data-error-callback="hcaptchaError"></div>
+                <div class="error-message" id="hcaptchaError"></div>
+            </div>
+            
             <button type="submit" id="submitBtn" class="btn-submit" disabled>Se connecter</button>
+               <!-- Lien mot de passe oublié -->
+            <div style="text-align: center; margin-top: 15px;">
+                <a href="forgot_password.php" style="color: #006D5B; text-decoration: none; font-size: 14px;">
+                    🔐 Mot de passe oublié ?
+                </a>
+            </div>
         </form>
         <div class="register-link">
             Pas encore de compte ? <a href="register.php">Créer un compte</a>
@@ -407,18 +476,37 @@ textarea:focus {
         else navbar.classList.remove('scrolled');
     });
 
-    // ==================== VALIDATION JS PROFESSIONNELLE ====================
+    // ==================== VALIDATION JS ====================
     const emailInput = document.getElementById('email');
     const passwordInput = document.getElementById('password');
     const submitBtn = document.getElementById('submitBtn');
     const emailError = document.getElementById('emailError');
     const passwordError = document.getElementById('passwordError');
+    const hcaptchaError = document.getElementById('hcaptchaError');
+    const hcaptchaContainer = document.getElementById('h-captcha');
 
-    // Fonctions de validation
+    let hcaptchaValid = false;
+
+    // Fonction appelée par hCaptcha quand l'utilisateur réussit
+    // NOTE: Les callbacks doivent être au niveau global
+    window.hcaptchaSuccess = function(token) {
+        hcaptchaValid = true;
+        hcaptchaError.textContent = '';
+        checkFormValidity();
+    };
+
+    // Fonction appelée par hCaptcha en cas d'erreur
+    window.hcaptchaError = function() {
+        hcaptchaValid = false;
+        hcaptchaError.textContent = 'Veuillez compléter le puzzle anti-robot';
+        checkFormValidity();
+    };
+
+    // Validation des champs
     function validateEmail(email) {
         const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
         if (!email) return 'L\'email est requis';
-        if (!emailRegex.test(email)) return 'Veuillez entrer un email valide (exemple@domaine.com)';
+        if (!emailRegex.test(email)) return 'Veuillez entrer un email valide';
         return null;
     }
 
@@ -428,7 +516,6 @@ textarea:focus {
         return null;
     }
 
-    // Mettre à jour l'UI du champ
     function updateFieldStatus(input, errorElement, isValid, errorMessage) {
         if (isValid) {
             input.classList.add('valid');
@@ -444,7 +531,6 @@ textarea:focus {
         }
     }
 
-    // Valider l'email
     function checkEmail() {
         const email = emailInput.value.trim();
         const error = validateEmail(email);
@@ -453,7 +539,6 @@ textarea:focus {
         return isValid;
     }
 
-    // Valider le mot de passe
     function checkPassword() {
         const password = passwordInput.value;
         const error = validatePassword(password);
@@ -462,14 +547,12 @@ textarea:focus {
         return isValid;
     }
 
-    // Vérifier si le formulaire est valide
     function checkFormValidity() {
         const isEmailValid = checkEmail();
         const isPasswordValid = checkPassword();
-        submitBtn.disabled = !(isEmailValid && isPasswordValid);
+        submitBtn.disabled = !(isEmailValid && isPasswordValid && hcaptchaValid);
     }
 
-    // Écouteurs d'événements
     emailInput.addEventListener('input', () => {
         checkEmail();
         checkFormValidity();
@@ -480,16 +563,10 @@ textarea:focus {
         checkFormValidity();
     });
 
-    // Soumission du formulaire
     document.getElementById('loginForm').addEventListener('submit', function(e) {
-        const isEmailValid = checkEmail();
-        const isPasswordValid = checkPassword();
-        
-        if (!isEmailValid || !isPasswordValid) {
+        if (!hcaptchaValid) {
             e.preventDefault();
-            // Animation de shake sur le bouton
-            submitBtn.style.transform = 'translateX(5px)';
-            setTimeout(() => { submitBtn.style.transform = ''; }, 200);
+            hcaptchaError.textContent = 'Veuillez compléter le puzzle anti-robot';
         }
     });
 </script>

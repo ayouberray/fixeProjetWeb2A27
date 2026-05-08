@@ -28,7 +28,7 @@ class Utilisateur {
         $stmt = $this->db->query("
             SELECT id, nom, prenom, sexe, date_naissance, type_compte, role, 
                    pays, ville, email, telephone, cin, statut, date_creation,
-                   nom_organisation, profession
+                   nom_organisation, profession, email_verifie
             FROM utilisateurs 
             ORDER BY date_creation DESC
         ");
@@ -52,7 +52,7 @@ class Utilisateur {
         
         $sql = "SELECT id, nom, prenom, sexe, date_naissance, type_compte, role, 
                        pays, ville, email, telephone, cin, statut, date_creation,
-                       nom_organisation, profession
+                       nom_organisation, profession, email_verifie
                 FROM utilisateurs WHERE 1=1";
         $params = [];
         
@@ -92,7 +92,7 @@ class Utilisateur {
         $stmt = $this->db->prepare("
             SELECT id, nom, prenom, sexe, date_naissance, type_compte, role, 
                    pays, ville, email, telephone, cin, statut, date_creation,
-                   nom_organisation, profession
+                   nom_organisation, profession, email_verifie
             FROM utilisateurs WHERE id = :id
         ");
         $stmt->execute([':id' => $id]);
@@ -105,7 +105,7 @@ class Utilisateur {
     public function getByEmail($email) {
         $stmt = $this->db->prepare("
             SELECT id, nom, prenom, sexe, date_naissance, type_compte, role, 
-                   pays, ville, email, telephone, password, cin, statut, date_creation
+                   pays, ville, email, telephone, password, cin, statut, date_creation, email_verifie
             FROM utilisateurs WHERE email = :email
         ");
         $stmt->execute([':email' => $email]);
@@ -119,11 +119,11 @@ class Utilisateur {
         $sql = "INSERT INTO utilisateurs (
                     nom, prenom, sexe, date_naissance, type_compte, role, 
                     pays, ville, email, telephone, password, cin, 
-                    nom_organisation, profession, statut, date_creation
+                    nom_organisation, profession, statut, date_creation, email_verifie
                 ) VALUES (
                     :nom, :prenom, :sexe, :date_naissance, :type_compte, :role,
                     :pays, :ville, :email, :telephone, :password, :cin,
-                    :nom_organisation, :profession, :statut, NOW()
+                    :nom_organisation, :profession, :statut, NOW(), 0
                 )";
         
         $stmt = $this->db->prepare($sql);
@@ -142,7 +142,7 @@ class Utilisateur {
             ':cin' => $data['cin'] ?? '',
             ':nom_organisation' => $data['nom_organisation'] ?? null,
             ':profession' => $data['profession'] ?? null,
-            ':statut' => $data['statut'] ?? 'actif'
+            ':statut' => $data['statut'] ?? 'en_attente'
         ]);
         
         return $this->db->lastInsertId();
@@ -225,6 +225,19 @@ class Utilisateur {
     }
     
     /**
+     * Compte les utilisateurs actifs
+     */
+    public function countActiveUsers() {
+        $stmt = $this->db->query("
+            SELECT COUNT(*) as total 
+            FROM utilisateurs 
+            WHERE statut = 'actif'
+        ");
+        $result = $stmt->fetch();
+        return (int)$result['total'];
+    }
+    
+    /**
      * Compte les utilisateurs par période
      */
     public function countUsersByPeriod($period) {
@@ -263,19 +276,6 @@ class Utilisateur {
     }
     
     /**
-     * Compte les utilisateurs actifs
-     */
-    public function countActiveUsers() {
-        $stmt = $this->db->query("
-            SELECT COUNT(*) as total 
-            FROM utilisateurs 
-            WHERE statut = 'actif'
-        ");
-        $result = $stmt->fetch();
-        return (int)$result['total'];
-    }
-    
-    /**
      * Récupère le taux de complétion des profils
      */
     public function getProfileCompletionRate() {
@@ -302,7 +302,7 @@ class Utilisateur {
     }
     
     /**
-     * Récupère les inscriptions mensuelles (12 derniers mois)
+     * Récupère les inscriptions mensuelles
      */
     public function getMonthlyRegistrations() {
         $stmt = $this->db->query("
@@ -373,6 +373,165 @@ class Utilisateur {
     }
     
     /**
+     * Authentifie un utilisateur
+     */
+    public function login($email, $password) {
+        $user = $this->getByEmail($email);
+        
+        if ($user && password_verify($password, $user['password'])) {
+            return $user;
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Déconnecte un utilisateur
+     */
+    public function logout() {
+        session_destroy();
+    }
+    
+    // ==================== MÉTHODES POUR MOT DE PASSE OUBLIÉ ====================
+    
+    /**
+     * Récupérer un utilisateur par son email (pour forgot password)
+     */
+    public function getUserByEmail($email) {
+        $sql = "SELECT * FROM utilisateurs WHERE email = :email AND statut IN ('actif', 'en_attente')";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['email' => $email]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+    
+    /**
+     * Sauvegarder le token de réinitialisation
+     */
+    public function saveResetToken($email, $token, $expires) {
+        $sql = "UPDATE utilisateurs SET reset_token = :token, reset_expires = :expires WHERE email = :email";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([
+            'token' => $token,
+            'expires' => $expires,
+            'email' => $email
+        ]);
+    }
+    
+    /**
+     * Récupérer un utilisateur par son token (et vérifier qu'il n'est pas expiré)
+     */
+    public function getUserByToken($token) {
+        $sql = "SELECT * FROM utilisateurs 
+                WHERE reset_token = :token 
+                AND reset_expires > NOW() 
+                AND statut IN ('actif', 'en_attente')";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['token' => $token]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+    
+    /**
+     * Mettre à jour le mot de passe
+     */
+    public function updatePassword($email, $newPassword) {
+        $hashedPassword = password_hash($newPassword, PASSWORD_DEFAULT);
+        $sql = "UPDATE utilisateurs SET password = :password WHERE email = :email";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([
+            'password' => $hashedPassword,
+            'email' => $email
+        ]);
+    }
+    
+    /**
+     * Supprimer le token après réinitialisation
+     */
+    public function clearResetToken($email) {
+        $sql = "UPDATE utilisateurs SET reset_token = NULL, reset_expires = NULL WHERE email = :email";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute(['email' => $email]);
+    }
+    
+    // ==================== MÉTHODES POUR CONFIRMATION D'EMAIL ====================
+    
+    /**
+     * Sauvegarder le token de vérification d'email
+     */
+    public function saveVerificationToken($email, $token, $expires) {
+        $sql = "UPDATE utilisateurs SET verification_token = :token, verification_expires = :expires WHERE email = :email";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([
+            'token' => $token,
+            'expires' => $expires,
+            'email' => $email
+        ]);
+    }
+    
+    /**
+     * Vérifier si l'email est déjà vérifié
+     */
+    public function isEmailVerified($email) {
+        $sql = "SELECT email_verifie FROM utilisateurs WHERE email = :email";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['email' => $email]);
+        $result = $stmt->fetch();
+        return $result && $result['email_verifie'] == 1;
+    }
+    
+    /**
+     * Vérifier un token de confirmation et activer le compte
+     */
+    public function verifyEmailByToken($token) {
+        $sql = "UPDATE utilisateurs 
+                SET email_verifie = 1, 
+                    statut = 'actif',
+                    verification_token = NULL, 
+                    verification_expires = NULL 
+                WHERE verification_token = :token AND verification_expires > NOW()";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute(['token' => $token]);
+    }
+    
+    /**
+     * Récupérer un utilisateur par son token de vérification
+     */
+    public function getUserByVerificationToken($token) {
+        $sql = "SELECT * FROM utilisateurs 
+                WHERE verification_token = :token AND verification_expires > NOW()";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['token' => $token]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
+    }
+    
+    /**
+     * Activer directement un compte admin sans vérification email
+     */
+    public function verifyAdminEmail($email) {
+        $sql = "UPDATE utilisateurs 
+                SET email_verifie = 1, 
+                    statut = 'actif',
+                    verification_token = NULL, 
+                    verification_expires = NULL 
+                WHERE email = :email";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute(['email' => $email]);
+    }
+    
+    /**
+     * Marquer un email comme vérifié (pour pré-inscription)
+     */
+    public function markEmailAsVerified($email) {
+        $sql = "UPDATE utilisateurs 
+                SET email_verifie = 1, 
+                    statut = 'actif',
+                    verification_token = NULL, 
+                    verification_expires = NULL 
+                WHERE email = :email";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute(['email' => $email]);
+    }
+    
+    /**
      * Vérifie si l'utilisateur connecté est admin
      */
     public function isAdmin() {
@@ -387,170 +546,6 @@ class Utilisateur {
     }
     
     /**
-     * Authentifie un utilisateur
-     */
-    public function login($email, $password) {
-        $user = $this->getByEmail($email);
-        
-        if ($user && password_verify($password, $user['password'])) {
-            return $user;
-        }
-        
-        return false;
-    }
-
-    /**
-     * Déconnecte un utilisateur
-     */
-    public function logout() {
-        session_destroy();
-    }
-
-    // ==================== PROPRIÉTÉS PRIVÉES POUR LES SETTERS ====================
-    private $nom;
-    private $prenom;
-    private $sexe;
-    private $dateNaissance;
-    private $cin;
-    private $telephone;
-    private $typeCompte;
-    private $pays;
-    private $ville;
-    private $email;
-    private $plainPassword;
-    private $nomOrganisation;
-    private $profession;
-    private $statut;
-    private $role;
-
-    // ==================== SETTERS (RETOURNENT $this POUR FLUENT INTERFACE) ====================
-    public function setNom($nom) {
-        $this->nom = $nom;
-        return $this;
-    }
-
-    public function setPrenom($prenom) {
-        $this->prenom = $prenom;
-        return $this;
-    }
-
-    public function setSexe($sexe) {
-        $this->sexe = $sexe;
-        return $this;
-    }
-
-    public function setDateNaissance($dateNaissance) {
-        $this->dateNaissance = $dateNaissance;
-        return $this;
-    }
-
-    public function setCin($cin) {
-        $this->cin = $cin;
-        return $this;
-    }
-
-    public function setTelephone($telephone) {
-        $this->telephone = $telephone;
-        return $this;
-    }
-
-    public function setTypeCompte($typeCompte) {
-        $this->typeCompte = $typeCompte;
-        return $this;
-    }
-
-    public function setPays($pays) {
-        $this->pays = $pays;
-        return $this;
-    }
-
-    public function setVille($ville) {
-        $this->ville = $ville;
-        return $this;
-    }
-
-    public function setEmail($email) {
-        $this->email = $email;
-        return $this;
-    }
-
-    public function setPlainPassword($plainPassword) {
-        $this->plainPassword = $plainPassword;
-        return $this;
-    }
-
-    public function setNomOrganisation($nomOrganisation) {
-        $this->nomOrganisation = $nomOrganisation;
-        return $this;
-    }
-
-    public function setProfession($profession) {
-        $this->profession = $profession;
-        return $this;
-    }
-
-    public function setStatut($statut) {
-        $this->statut = $statut;
-        return $this;
-    }
-
-    public function setRole($role) {
-        $this->role = $role;
-        return $this;
-    }
-
-    // ==================== MÉTHODE POUR ENREGISTRER L'UTILISATEUR ====================
-    /**
-     * Enregistre un nouvel utilisateur avec les propriétés définies par les setters
-     * Assigne automatiquement le rôle selon le type_compte
-     */
-    public function save() {
-        // Assigner le rôle selon le type_compte
-        $role = 'user'; // Rôle par défaut
-        
-        if ($this->typeCompte === 'agent_public') {
-            $role = 'agent'; // Les agents publics deviennent agents
-        }
-        
-        $sql = "INSERT INTO utilisateurs (
-                    nom, prenom, sexe, date_naissance, type_compte, role, 
-                    pays, ville, email, telephone, password, cin, 
-                    nom_organisation, profession, statut, date_creation
-                ) VALUES (
-                    :nom, :prenom, :sexe, :date_naissance, :type_compte, :role,
-                    :pays, :ville, :email, :telephone, :password, :cin,
-                    :nom_organisation, :profession, :statut, NOW()
-                )";
-        
-        $stmt = $this->db->prepare($sql);
-        
-        try {
-            $stmt->execute([
-                ':nom' => $this->nom,
-                ':prenom' => $this->prenom,
-                ':sexe' => $this->sexe,
-                ':date_naissance' => $this->dateNaissance,
-                ':type_compte' => $this->typeCompte,
-                ':role' => $role,
-                ':pays' => $this->pays,
-                ':ville' => $this->ville,
-                ':email' => $this->email,
-                ':telephone' => $this->telephone,
-                ':password' => password_hash($this->plainPassword, PASSWORD_DEFAULT),
-                ':cin' => $this->cin,
-                ':nom_organisation' => empty($this->nomOrganisation) ? null : $this->nomOrganisation,
-                ':profession' => empty($this->profession) ? null : $this->profession,
-                ':statut' => $this->statut
-            ]);
-            
-            return true;
-        } catch (PDOException $e) {
-            error_log('Erreur lors de l\'insertion : ' . $e->getMessage());
-            return false;
-        }
-    }
-
-    /**
      * Vérifie si une email existe déjà
      */
     public function emailExists($email) {
@@ -559,7 +554,7 @@ class Utilisateur {
         $result = $stmt->fetch();
         return (int)$result['total'] > 0;
     }
-
+    
     /**
      * Vérifie si un CIN existe déjà
      */
@@ -570,3 +565,4 @@ class Utilisateur {
         return (int)$result['total'] > 0;
     }
 }
+?>

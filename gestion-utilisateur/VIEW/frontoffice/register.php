@@ -1,4 +1,181 @@
-﻿<?php session_start(); ?>
+﻿<?php
+session_start();
+require_once '../../CONFIG/config.php';
+require_once '../../MODEL/Utilisateur.php';
+
+$error = '';
+$success = '';
+$showForm = true;
+
+// Vérifier si on vient du lien de confirmation
+if (isset($_GET['confirm']) && isset($_GET['token'])) {
+    $token = $_GET['token'];
+    
+    // Vérifier si les données temporaires existent dans la session
+    if (isset($_SESSION['temp_registration']) && $_SESSION['temp_registration']['token'] === $token) {
+        
+        // Vérifier si la session n'a pas expiré (24h)
+        if ($_SESSION['temp_registration']['expires'] > time()) {
+            $tempData = $_SESSION['temp_registration']['data'];
+            
+            $utilisateurModel = new Utilisateur();
+            
+            // Vérifier si l'email n'a pas été déjà utilisé entre temps
+            if (!$utilisateurModel->emailExists($tempData['email'])) {
+                
+                // Déterminer le rôle
+                $role = 'user';
+                if ($tempData['type_compte'] === 'agent_public') {
+                    $role = 'agent';
+                }
+                
+                // Créer l'utilisateur définitivement
+                $userId = $utilisateurModel->create([
+                    'nom' => $tempData['nom'],
+                    'prenom' => $tempData['prenom'],
+                    'sexe' => $tempData['sexe'],
+                    'date_naissance' => $tempData['date_naissance'],
+                    'type_compte' => $tempData['type_compte'],
+                    'role' => $role,
+                    'pays' => $tempData['pays'],
+                    'ville' => $tempData['ville'],
+                    'email' => $tempData['email'],
+                    'telephone' => $tempData['telephone'],
+                    'password' => $tempData['password'],
+                    'cin' => $tempData['cin'],
+                    'nom_organisation' => $tempData['nom_organisation'] ?? null,
+                    'profession' => $tempData['profession'] ?? null,
+                    'statut' => 'actif'
+                ]);
+                
+                if ($userId) {
+                    // Marquer l'email comme vérifié
+                    $utilisateurModel->markEmailAsVerified($tempData['email']);
+                    
+                    // Supprimer les données temporaires de la session
+                    unset($_SESSION['temp_registration']);
+                    
+                    $success = "✅ Votre compte a été créé avec succès !<br>Vous pouvez maintenant vous connecter.";
+                    $showForm = false;
+                } else {
+                    $error = "❌ Erreur lors de la création du compte.";
+                }
+            } else {
+                $error = "❌ Cet email est déjà utilisé. Veuillez vous connecter.";
+                unset($_SESSION['temp_registration']);
+            }
+        } else {
+            $error = "❌ Le lien de confirmation a expiré (24h). Veuillez refaire une inscription.";
+            unset($_SESSION['temp_registration']);
+        }
+    } else {
+        $error = "❌ Lien de confirmation invalide. Veuillez refaire une inscription.";
+    }
+}
+
+// Traitement du formulaire d'inscription (pré-inscription)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'pre_register') {
+    
+    // Récupération des données
+    $nom = trim($_POST['nom'] ?? '');
+    $prenom = trim($_POST['prenom'] ?? '');
+    $sexe = $_POST['sexe'] ?? 'Homme';
+    $date_naissance = $_POST['date_naissance'] ?? '';
+    $cin = trim($_POST['cin'] ?? '');
+    $telephone = trim($_POST['telephone'] ?? '');
+    $pays = $_POST['pays'] ?? 'Tunisie';
+    $ville = $_POST['ville'] ?? '';
+    $email = trim($_POST['email'] ?? '');
+    $password = $_POST['password'] ?? '';
+    $confirm_password = $_POST['confirm_password'] ?? '';
+    $type_compte = $_POST['type_compte'] ?? 'citoyen';
+    $nom_organisation = trim($_POST['nom_organisation'] ?? '');
+    $profession = trim($_POST['profession'] ?? '');
+    
+    // Conversion date (d/m/Y -> Y-m-d)
+    if (!empty($date_naissance)) {
+        $dateParts = explode('/', $date_naissance);
+        if (count($dateParts) === 3) {
+            $date_naissance = $dateParts[2] . '-' . $dateParts[1] . '-' . $dateParts[0];
+        }
+    } else {
+        $date_naissance = '2000-01-01';
+    }
+    
+    $errors = [];
+    
+    // Validations
+    if (empty($nom)) $errors[] = "Le nom est requis.";
+    if (empty($prenom)) $errors[] = "Le prénom est requis.";
+    if (empty($cin)) $errors[] = "Le CIN est requis.";
+    if (!preg_match('/^[0-9]{8}$/', $cin)) $errors[] = "Le CIN doit contenir exactement 8 chiffres.";
+    if (empty($email)) $errors[] = "L'email est requis.";
+    if (empty($password)) $errors[] = "Le mot de passe est requis.";
+    if (strlen($password) < 6) $errors[] = "Le mot de passe doit contenir au moins 6 caractères.";
+    if ($password !== $confirm_password) $errors[] = "Les mots de passe ne correspondent pas.";
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) $errors[] = "Email invalide.";
+    if (empty($ville)) $errors[] = "La ville est requise.";
+    
+    $utilisateurModel = new Utilisateur();
+    
+    // Vérifier si l'email n'existe pas déjà
+    if ($utilisateurModel->emailExists($email)) {
+        $errors[] = "Cet email est déjà utilisé.";
+    }
+    
+    // Vérifier si le CIN n'existe pas déjà
+    if ($utilisateurModel->cinExists($cin)) {
+        $errors[] = "Ce CIN est déjà utilisé.";
+    }
+    
+    if (empty($errors)) {
+        // Générer un token unique
+        $token = bin2hex(random_bytes(50));
+        
+        // Stocker les données dans la session (expire dans 24h)
+        $_SESSION['temp_registration'] = [
+            'token' => $token,
+            'expires' => time() + (24 * 3600), // 24 heures
+            'data' => [
+                'nom' => $nom,
+                'prenom' => $prenom,
+                'sexe' => $sexe,
+                'date_naissance' => $date_naissance,
+                'cin' => $cin,
+                'telephone' => $telephone,
+                'pays' => $pays,
+                'ville' => $ville,
+                'email' => $email,
+                'password' => $password,
+                'type_compte' => $type_compte,
+                'nom_organisation' => $nom_organisation,
+                'profession' => $profession
+            ]
+        ];
+        
+        // Créer le lien de confirmation
+        $protocol = isset($_SERVER['HTTPS']) ? 'https://' : 'http://';
+        $host = $_SERVER['HTTP_HOST'];
+        $confirmLink = $protocol . $host . '/try1/gestion-utilisateur/VIEW/frontoffice/register.php?confirm=1&token=' . $token;
+        
+        // Envoyer l'email
+        $mailer = new MailConfig();
+        $fullName = $prenom . ' ' . $nom;
+        
+        if ($mailer->sendPreRegistrationEmail($email, $fullName, $confirmLink)) {
+            $success = "✅ Un email de confirmation a été envoyé à <strong>" . htmlspecialchars($email) . "</strong><br>
+                        📧 Veuillez vérifier votre boîte de réception (et vos spams) pour finaliser votre inscription.<br>
+                        ⚠️ Vous avez 24 heures pour confirmer votre compte.";
+            $showForm = false;
+        } else {
+            $error = "❌ Erreur lors de l'envoi de l'email. Veuillez réessayer.";
+            unset($_SESSION['temp_registration']);
+        }
+    } else {
+        $error = implode('<br>', $errors);
+    }
+}
+?>
 <!DOCTYPE html>
 <html lang="fr">
 <head>
@@ -361,17 +538,18 @@ textarea:focus {
     <div class="register-card">
         <h2>📝 Créer un compte</h2>
         
-        <?php if(isset($_SESSION['errors'])): ?>
-            <div class="alert alert-error">
-                <?php foreach($_SESSION['errors'] as $error): ?>
-                    <div>• <?= htmlspecialchars($error) ?></div>
-                <?php endforeach; ?>
-                <?php unset($_SESSION['errors']); ?>
-            </div>
+        <?php if(!empty($error)): ?>
+            <div class="alert alert-error"><?php echo $error; ?></div>
         <?php endif; ?>
-
-        <form id="registerForm" method="POST" action="../../CONTROLLER/AuthController.php">
-            <input type="hidden" name="action" value="register">
+        
+        <?php if(!empty($success)): ?>
+            <div class="alert alert-success"><?php echo $success; ?></div>
+            <div class="register-link"><a href="login.php">← Aller à la connexion</a></div>
+        <?php endif; ?>
+        
+        <?php if($showForm): ?>
+        <form method="POST" action="">
+            <input type="hidden" name="action" value="pre_register">
             
             <!-- NOM et PRÉNOM -->
             <div class="form-row">
@@ -499,9 +677,10 @@ textarea:focus {
                 </div>
             </div>
             
-            <button type="submit" id="submitBtn" class="btn-submit" disabled>S'inscrire</button>
+            <button type="submit" id="submitBtn" class="btn-submit">S'inscrire</button>
         </form>
-        <div class="login-link">Déjà inscrit ? <a href="login.php">Se connecter</a></div>
+        <div class="register-link">Déjà inscrit ? <a href="login.php">Se connecter</a></div>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -824,6 +1003,9 @@ textarea:focus {
             setTimeout(() => { submitBtn.style.transform = ''; }, 200);
         }
     });
+    
+    // Validation initiale
+    checkFormValidity();
 </script>
 </body>
 </html>

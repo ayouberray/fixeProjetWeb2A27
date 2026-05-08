@@ -1,5 +1,9 @@
 <?php
-session_start();
+// Vérifier si la session est déjà démarrée
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 require_once '../../MODEL/Utilisateur.php';
 
 $utilisateur = new Utilisateur();
