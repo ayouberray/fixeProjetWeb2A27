@@ -126,9 +126,53 @@
         };
     };
 
+    const initAdvancedStats = () => {
+        const toggle = document.querySelector('[data-stats-toggle]');
+        const panel = document.querySelector('[data-advanced-stats]');
+        if (!toggle || !panel) return;
+        if (toggle.dataset.ready === '1') return;
+        toggle.dataset.ready = '1';
+
+        const animateRings = () => {
+            panel.querySelectorAll('.stat-ring').forEach((ring) => {
+                const target = Number.parseInt(ring.style.getPropertyValue('--value') || '0', 10);
+                const startAt = performance.now();
+                const duration = 900;
+
+                const step = (time) => {
+                    const progress = Math.min((time - startAt) / duration, 1);
+                    const eased = 1 - Math.pow(1 - progress, 3);
+                    ring.style.setProperty('--progress', Math.round(target * eased));
+
+                    if (progress < 1) {
+                        requestAnimationFrame(step);
+                    }
+                };
+
+                ring.style.setProperty('--progress', '0');
+                requestAnimationFrame(step);
+            });
+        };
+
+        toggle.addEventListener('click', () => {
+            const isOpen = !panel.hasAttribute('hidden');
+            if (isOpen) {
+                panel.setAttribute('hidden', '');
+                toggle.setAttribute('aria-expanded', 'false');
+                return;
+            }
+
+            panel.removeAttribute('hidden');
+            toggle.setAttribute('aria-expanded', 'true');
+            animateRings();
+            panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+    };
+
     window.addEventListener('load', initLoader);
     initReveal();
     initCounters();
     initSlideshow();
     initToasts();
+    initAdvancedStats();
 })();

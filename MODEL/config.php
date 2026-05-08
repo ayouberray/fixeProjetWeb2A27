@@ -4,9 +4,11 @@ ini_set('display_errors', 1);
 
 class Config {
     private static $pdo;
+    private static $checked = false;
 
     public static function getConnexion() {
-        if (!isset(self::$pdo)) {
+        if (!self::$checked) {
+            self::$checked = true;
             $servername = 'localhost';
             $username = 'root';
             $password = '';
@@ -23,7 +25,8 @@ class Config {
                     ]
                 );
             } catch (PDOException $e) {
-                echo 'erreur ' . $e->getMessage();
+                error_log('Erreur connexion DB: ' . $e->getMessage());
+                self::$pdo = null;
             }
         }
 

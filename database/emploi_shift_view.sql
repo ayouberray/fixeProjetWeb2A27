@@ -6,6 +6,7 @@ SELECT
     e.id_shift,
     e.date_travail,
     e.statut,
+    e.qr_token,
     e.date_creation,
     e.date_modification,
     u.nom AS agent_nom,
