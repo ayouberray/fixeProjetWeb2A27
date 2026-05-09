@@ -18,6 +18,7 @@ $services = $ctrl->getServices();
 $calendarMonth = preg_match('/^\d{4}-\d{2}$/', $_GET['month'] ?? '') ? $_GET['month'] : date('Y-m');
 $calendarItems = $ctrl->getCalendrierEmplois($calendarMonth);
 $statsTotal = max(1, (int) ($stats['total'] ?? 0));
+$defaultNotificationPhone = '58739548';
 
 function emploi_badge_class($statut) {
     if ($statut === 'termine') {
@@ -45,10 +46,6 @@ function emploi_query_url($params = []) {
     return '?' . http_build_query(array_merge($_GET, $params));
 }
 
-function emploi_export_pdf_url() {
-    return theme_url('VIEW/backoffice/admin-emplois-export-pdf.php?' . http_build_query($_GET));
-}
-
 function emploi_message($emploi) {
     $agent = trim(($emploi['agent_nom'] ?? '') . ' ' . ($emploi['agent_prenom'] ?? ''));
     $date = date('d/m/Y', strtotime($emploi['date_travail']));
@@ -67,61 +64,40 @@ function emploi_calendar_url($emploi) {
     return 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' . rawurlencode($title) . '&dates=' . $date . '/' . $end . '&details=' . rawurlencode($details);
 }
 
-function emploi_absolute_url($path) {
-    $isHttps = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
-        || (($_SERVER['SERVER_PORT'] ?? '') === '443');
-    $scheme = $isHttps ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'] ?? 'localhost';
-    $hostOnly = preg_replace('/:\d+$/', '', $host);
-    $port = '';
-    if (preg_match('/:(\d+)$/', $host, $matches) && !in_array($matches[1], ['80', '443'], true)) {
-        $port = ':' . $matches[1];
-    }
+function emploi_phone_display($phone = '') {
+    global $defaultNotificationPhone;
 
-    if (in_array($hostOnly, ['localhost', '127.0.0.1', '::1'], true)) {
-        $lanHost = emploi_lan_host();
-        if ($lanHost !== null) {
-            $host = $lanHost . $port;
-        }
-    }
-
-    return $scheme . '://' . $host . $path;
+    return $defaultNotificationPhone;
 }
 
-function emploi_lan_host() {
-    $output = function_exists('shell_exec') ? shell_exec('ipconfig') : null;
-    if (is_string($output) && preg_match_all('/IPv4[^\r\n:]*[.: ]+([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)/i', $output, $matches)) {
-        $ips = (array) $matches[1];
-        // Chercher une IP qui ressemble à un vrai LAN (pas virtuel comme VMware 92.x ou 42.x)
-        foreach ($ips as $ip) {
-            if (preg_match('/^(192\.168\.[01]\.|172\.16\.|10\.)/', $ip)) {
-                return $ip;
-            }
-        }
-        // Sinon, prendre la première valide qui n'est pas localhost ou APIPA
-        foreach ($ips as $ip) {
-            if (strpos($ip, '169.254.') !== 0 && $ip !== '127.0.0.1') {
-                return $ip;
-            }
-        }
+function emploi_phone_for_link($phone = '') {
+    global $defaultNotificationPhone;
+    $phone = $defaultNotificationPhone;
+    $phone = preg_replace('/[^\d+]/', '', $phone);
+    if (strpos($phone, '00') === 0) {
+        $phone = '+' . substr($phone, 2);
+    }
+    if (strpos($phone, '+') !== 0 && preg_match('/^\d{8}$/', $phone)) {
+        $phone = '+216' . $phone;
     }
 
-    $serverAddr = $_SERVER['SERVER_ADDR'] ?? '';
-    if (filter_var($serverAddr, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4) && strpos($serverAddr, '127.') !== 0) {
-        return $serverAddr;
+    return $phone;
+}
+
+function emploi_sms_url($emploi) {
+    $phone = emploi_phone_for_link();
+
+    return 'sms:' . $phone . '?body=' . rawurlencode(emploi_message($emploi));
+}
+
+function emploi_whatsapp_url($emploi) {
+    $phone = emploi_phone_for_link();
+    $digits = preg_replace('/\D/', '', $phone);
+    if ($digits !== '') {
+        return 'https://wa.me/' . $digits . '?text=' . rawurlencode(emploi_message($emploi));
     }
 
-    return null;
-}
-
-function emploi_qr_page_url($emploi) {
-    return emploi_absolute_url(theme_url('VIEW/frontoffice/emploi-qr.php?t=' . rawurlencode($emploi['qr_token'] ?? '')));
-}
-
-function emploi_qr_image_url($emploi, $size = 140) {
-    $url = emploi_qr_page_url($emploi);
-
-    return 'https://api.qrserver.com/v1/create-qr-code/?size=' . (int) $size . 'x' . (int) $size . '&data=' . rawurlencode($url);
+    return 'https://wa.me/?text=' . rawurlencode(emploi_message($emploi));
 }
 
 theme_render_start([
@@ -138,133 +114,69 @@ theme_render_start([
     </button>
 </div>
 
-<!-- Inclure Chart.js via CDN -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<div class="infographic-dashboard infographic-dashboard--emplois" id="advancedStatsPanel" data-advanced-stats hidden>
-    <div class="infographic-header">
-        <h2><?= htmlspecialchars(theme_t('Tableau de Bord Infographique - Emplois', 'لوحة التحكم الجرافيكية - الوظائف')) ?></h2>
+<div class="advanced-stats" id="advancedStatsPanel" data-advanced-stats hidden>
+    <div class="advanced-stats__head">
+        <div>
+            <span class="eyebrow"><?= htmlspecialchars(theme_t('Statistique', 'Statistique')) ?></span>
+            <h2><?= htmlspecialchars(theme_t('Vue statistique dynamique', 'Vue statistique dynamique')) ?></h2>
+        </div>
+        <span class="advanced-stats__spinner" aria-hidden="true"></span>
     </div>
 
-    <div class="info-quick-stats">
-        <article class="info-stat-card">
-            <i class="fa-solid fa-calendar-check"></i>
-            <div>
-                <strong data-countup="<?= (int) $stats['total'] ?>"><?= (int) $stats['total'] ?></strong>
-                <span><?= htmlspecialchars(theme_t('Total Emplois', 'إجمالي الوظائف')) ?></span>
-            </div>
+    <div class="advanced-stats__grid">
+        <?php
+        $statCards = [
+            ['label' => theme_t('Planifies', 'Planifies'), 'value' => (int) ($stats['planifies'] ?? 0), 'percent' => round(((int) ($stats['planifies'] ?? 0) / $statsTotal) * 100), 'icon' => 'fa-hourglass-half', 'tone' => 'amber'],
+            ['label' => theme_t('Termines', 'Termines'), 'value' => (int) ($stats['termines'] ?? 0), 'percent' => round(((int) ($stats['termines'] ?? 0) / $statsTotal) * 100), 'icon' => 'fa-circle-check', 'tone' => 'green'],
+            ['label' => theme_t('Annules', 'Annules'), 'value' => (int) ($stats['annules'] ?? 0), 'percent' => round(((int) ($stats['annules'] ?? 0) / $statsTotal) * 100), 'icon' => 'fa-ban', 'tone' => 'red'],
+            ['label' => theme_t('Cette semaine', 'Cette semaine'), 'value' => (int) ($stats['semaine'] ?? 0), 'percent' => round(((int) ($stats['semaine'] ?? 0) / $statsTotal) * 100), 'icon' => 'fa-calendar-week', 'tone' => 'blue'],
+        ];
+        ?>
+        <article class="advanced-stat advanced-stat--total advanced-stat--teal">
+            <span class="advanced-stat__icon"><i class="fa-solid fa-calendar-check"></i></span>
+            <strong class="advanced-stat__number" data-countup="<?= (int) ($stats['total'] ?? 0) ?>"><?= (int) ($stats['total'] ?? 0) ?></strong>
+            <span><?= htmlspecialchars(theme_t('Total emplois', 'Total emplois')) ?></span>
         </article>
-        <article class="info-stat-card">
-            <i class="fa-solid fa-hourglass-half"></i>
-            <div>
-                <strong data-countup="<?= (int) $stats['planifies'] ?>"><?= (int) $stats['planifies'] ?></strong>
-                <span><?= htmlspecialchars(theme_t('Planifiés', 'مخطط لها')) ?></span>
-            </div>
+        <article class="advanced-stat advanced-stat--total advanced-stat--violet">
+            <span class="advanced-stat__icon"><i class="fa-solid fa-users"></i></span>
+            <strong class="advanced-stat__number" data-countup="<?= (int) ($stats['agents'] ?? 0) ?>"><?= (int) ($stats['agents'] ?? 0) ?></strong>
+            <span><?= htmlspecialchars(theme_t('Agents affectes', 'Agents affectes')) ?></span>
         </article>
-        <article class="info-stat-card">
-            <i class="fa-solid fa-circle-check" style="color: #10b981; background: #ecfdf5;"></i>
-            <div>
-                <strong data-countup="<?= (int) $stats['termines'] ?>"><?= (int) $stats['termines'] ?></strong>
-                <span><?= htmlspecialchars(theme_t('Terminés', 'مكتملة')) ?></span>
-            </div>
+        <article class="advanced-stat advanced-stat--total advanced-stat--cyan">
+            <span class="advanced-stat__icon"><i class="fa-solid fa-calendar-day"></i></span>
+            <strong class="advanced-stat__number" data-countup="<?= (int) ($stats['aujourdhui'] ?? 0) ?>"><?= (int) ($stats['aujourdhui'] ?? 0) ?></strong>
+            <span><?= htmlspecialchars(theme_t('Aujourd hui', 'Aujourd hui')) ?></span>
         </article>
-        <article class="info-stat-card">
-            <i class="fa-solid fa-users" style="color: #8b5cf6; background: #f5f3ff;"></i>
-            <div>
-                <strong data-countup="<?= (int) $stats['agents'] ?>"><?= (int) $stats['agents'] ?></strong>
-                <span><?= htmlspecialchars(theme_t('Agents Actifs', 'الوكلاء النشطون')) ?></span>
-            </div>
-        </article>
+
+        <?php foreach ($statCards as $card): ?>
+            <article class="advanced-stat advanced-stat--<?= htmlspecialchars($card['tone']) ?>">
+                <div class="stat-ring stat-ring--<?= htmlspecialchars($card['tone']) ?>" style="--value: <?= (int) $card['percent'] ?>;">
+                    <span><?= (int) $card['percent'] ?>%</span>
+                </div>
+                <div>
+                    <span class="advanced-stat__icon"><i class="fa-solid <?= htmlspecialchars($card['icon']) ?>"></i></span>
+                    <strong class="advanced-stat__number" data-countup="<?= (int) $card['value'] ?>"><?= (int) $card['value'] ?></strong>
+                    <span><?= htmlspecialchars($card['label']) ?></span>
+                    <div class="stat-progress" style="--value: <?= (int) $card['percent'] ?>;">
+                        <span></span>
+                    </div>
+                </div>
+            </article>
+        <?php endforeach; ?>
     </div>
 
-    <div class="infographic-grid">
-        <!-- Chart 1: Répartition par Statut -->
-        <div class="info-card">
-            <div class="info-card__head">
-                <h3><?= htmlspecialchars(theme_t('Répartition par Statut', 'توزيع حسب الحالة')) ?></h3>
-                <span class="info-card__badge">Live</span>
-            </div>
-            <div class="info-chart-wrap">
-                <canvas id="chartStatut"></canvas>
-            </div>
+    <div class="stats-summary">
+        <div>
+            <strong><?= (int) ($stats['termines'] ?? 0) ?></strong>
+            <span><?= htmlspecialchars(theme_t('missions terminees', 'missions terminees')) ?></span>
         </div>
-
-        <!-- Chart 2: Répartition par Période -->
-        <div class="info-card">
-            <div class="info-card__head">
-                <h3><?= htmlspecialchars(theme_t('Répartition par Période', 'التوزيع حسب الفترة')) ?></h3>
-            </div>
-            <div class="info-chart-wrap">
-                <canvas id="chartPeriode"></canvas>
-            </div>
+        <div>
+            <strong><?= (int) ($stats['planifies'] ?? 0) ?></strong>
+            <span><?= htmlspecialchars(theme_t('missions a suivre', 'missions a suivre')) ?></span>
         </div>
-
-        <!-- Chart 3: Top Services -->
-        <div class="info-card">
-            <div class="info-card__head">
-                <h3><?= htmlspecialchars(theme_t('Top Services', 'أفضل الخدمات')) ?></h3>
-                <span class="info-card__badge"><?= count($stats['par_service']) ?> items</span>
-            </div>
-            <div class="info-chart-wrap">
-                <canvas id="chartService"></canvas>
-            </div>
-        </div>
-
-        <!-- Chart 4: Tendance Mensuelle (Wide) -->
-        <div class="info-card info-card--wide">
-            <div class="info-card__head">
-                <h3><?= htmlspecialchars(theme_t('Évolution Mensuelle', 'التطور الشهري')) ?></h3>
-                <span class="info-card__badge">6 Mois</span>
-            </div>
-            <div class="info-chart-wrap">
-                <canvas id="chartMois"></canvas>
-            </div>
-        </div>
-
-        <!-- Chart 5: Distribution par Shift -->
-        <div class="info-card">
-            <div class="info-card__head">
-                <h3><?= htmlspecialchars(theme_t('Distribution par Shift', 'التوزيع حسب المناوبة')) ?></h3>
-            </div>
-            <div class="info-chart-wrap">
-                <canvas id="chartShift"></canvas>
-            </div>
-        </div>
-
-        <!-- Chart 6: Affluence par Heure -->
-        <div class="info-card">
-            <div class="info-card__head">
-                <h3><?= htmlspecialchars(theme_t('Affluence par Heure', 'توزيع حسب الساعة')) ?></h3>
-            </div>
-            <div class="info-chart-wrap">
-                <canvas id="chartHoraire"></canvas>
-            </div>
-        </div>
-        
-        <div class="info-card info-card--summary">
-            <div class="info-card__head">
-                <h3><?= htmlspecialchars(theme_t('Résumé Flash', 'ملخص سريع')) ?></h3>
-            </div>
-            <div class="shift-summary-stack">
-                <div class="notification notification--info">
-                    <i class="fa-solid fa-clock"></i>
-                    <div><strong><?= htmlspecialchars(theme_t('Aujourd\'hui', 'اليوم')) ?>: <?= (int) $stats['aujourdhui'] ?> emplois</strong></div>
-                </div>
-                <div class="notification notification--warning">
-                    <i class="fa-solid fa-bolt"></i>
-                    <div><strong>Durée Moyenne: <?= (int) $stats['duree_moyenne'] ?> min</strong></div>
-                </div>
-                <div class="notification notification--success">
-                    <i class="fa-solid fa-circle-check"></i>
-                    <div><strong>Semaine: <?= (int) $stats['semaine'] ?> planifiés</strong></div>
-                </div>
-            </div>
-            <div style="margin-top: 15px; text-align: center;">
-                <a href="<?= htmlspecialchars(theme_url('VIEW/backoffice/admin-emplois-statistiques.php')) ?>" class="btn btn--ghost btn--sm">
-                    <?= htmlspecialchars(theme_t('Voir analyse détaillée', 'عرض التحليل التفصيلي')) ?>
-                    <i class="fa-solid fa-arrow-right"></i>
-                </a>
-            </div>
+        <div>
+            <strong><?= (int) ($stats['annules'] ?? 0) ?></strong>
+            <span><?= htmlspecialchars(theme_t('annulations', 'annulations')) ?></span>
         </div>
     </div>
 </div>
@@ -276,140 +188,24 @@ theme_render_start([
     if (!btn || !panel || btn.dataset.ready === '1') return;
     btn.dataset.ready = '1';
 
-    var charts = {};
-    var statsData = <?= json_encode($stats, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?: '{}' ?>;
-
-    function animateCounters() {
-        panel.querySelectorAll('[data-countup]').forEach(function (el) {
-            var target = parseInt(el.dataset.countup, 10) || 0;
-            var count = 0;
-            var increment = Math.max(1, target / 50);
-            if (target === 0) { el.textContent = '0'; return; }
-            var timer = setInterval(function () {
-                count += increment;
-                if (count >= target) {
-                    el.textContent = target;
-                    clearInterval(timer);
-                } else {
-                    el.textContent = Math.floor(count);
-                }
-            }, 16);
-        });
-    }
-
-    function initCharts() {
-        if (Object.keys(charts).length > 0 || typeof Chart === 'undefined') return;
-
-        var commonOptions = { responsive: true, maintainAspectRatio: false };
-
-        // --- Chart Statut ---
-        charts.statut = new Chart(document.getElementById('chartStatut'), {
-            type: 'doughnut',
-            data: {
-                labels: ['Planifié', 'Terminé', 'Annulé'],
-                datasets: [{
-                    data: [statsData.planifies || 0, statsData.termines || 0, statsData.annules || 0],
-                    backgroundColor: ['#f59e0b', '#10b981', '#ef4444'],
-                    borderWidth: 0,
-                    hoverOffset: 10
-                }]
-            },
-            options: Object.assign({}, commonOptions, { plugins: { legend: { position: 'bottom' } }, cutout: '70%' })
-        });
-
-        // --- Chart Période ---
-        charts.periode = new Chart(document.getElementById('chartPeriode'), {
-            type: 'pie',
-            data: {
-                labels: (statsData.par_periode || []).map(i => i.label),
-                datasets: [{
-                    data: (statsData.par_periode || []).map(i => i.value),
-                    backgroundColor: ['#38bdf8', '#8b5cf6', '#ec4899'],
-                    borderWidth: 0
-                }]
-            },
-            options: Object.assign({}, commonOptions, { plugins: { legend: { position: 'bottom' } } })
-        });
-
-        // --- Chart Service ---
-        charts.service = new Chart(document.getElementById('chartService'), {
-            type: 'pie',
-            data: {
-                labels: (statsData.par_service || []).map(i => i.label),
-                datasets: [{
-                    data: (statsData.par_service || []).map(i => i.value),
-                    backgroundColor: ['#38bdf8', '#8b5cf6', '#ec4899', '#10b981', '#f59e0b'],
-                    borderWidth: 0
-                }]
-            },
-            options: Object.assign({}, commonOptions, { plugins: { legend: { position: 'bottom' } } })
-        });
-
-        // --- Chart Shift ---
-        charts.shift = new Chart(document.getElementById('chartShift'), {
-            type: 'bar',
-            data: {
-                labels: (statsData.par_shift || []).map(i => i.label),
-                datasets: [{
-                    label: 'Emplois',
-                    data: (statsData.par_shift || []).map(i => i.value),
-                    backgroundColor: '#8b5cf6',
-                    borderRadius: 6
-                }]
-            },
-            options: Object.assign({}, commonOptions, {
-                indexAxis: 'y',
-                plugins: { legend: { display: false } },
-                scales: { x: { grid: { display: false } }, y: { grid: { display: false } } }
-            })
-        });
-
-        // --- Chart Mois ---
-        charts.mois = new Chart(document.getElementById('chartMois'), {
-            type: 'line',
-            data: {
-                labels: (statsData.par_mois || []).map(i => i.label),
-                datasets: [{
-                    label: 'Emplois',
-                    data: (statsData.par_mois || []).map(i => i.value),
-                    borderColor: '#38bdf8',
-                    backgroundColor: 'rgba(56, 189, 248, 0.1)',
-                    fill: true,
-                    tension: 0.4,
-                    pointRadius: 5
-                }]
-            },
-            options: commonOptions
-        });
-
-        // --- Chart Horaire ---
-        charts.horaire = new Chart(document.getElementById('chartHoraire'), {
-            type: 'line',
-            data: {
-                labels: (statsData.par_horaire || []).map(i => i.label),
-                datasets: [{
-                    label: 'Affluence',
-                    data: (statsData.par_horaire || []).map(i => i.value),
-                    borderColor: '#10b981',
-                    backgroundColor: 'rgba(16, 185, 129, 0.1)',
-                    fill: true,
-                    tension: 0.3
-                }]
-            },
-            options: commonOptions
-        });
-    }
-
     btn.addEventListener('click', function () {
         var isHidden = panel.hasAttribute('hidden');
         if (isHidden) {
             panel.removeAttribute('hidden');
             btn.setAttribute('aria-expanded', 'true');
-            initCharts();
-            animateCounters();
-            setTimeout(function() {
-                panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-            }, 50);
+            panel.querySelectorAll('.stat-ring').forEach(function (ring) {
+                var target = parseInt(ring.style.getPropertyValue('--value') || '0', 10);
+                var value = 0;
+                var timer = setInterval(function () {
+                    value += Math.max(1, Math.ceil(target / 24));
+                    if (value >= target) {
+                        value = target;
+                        clearInterval(timer);
+                    }
+                    ring.style.setProperty('--progress', value);
+                }, 24);
+            });
+            panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         } else {
             panel.setAttribute('hidden', '');
             btn.setAttribute('aria-expanded', 'false');
@@ -512,16 +308,10 @@ theme_render_start([
             <h2><?= htmlspecialchars(theme_t('Liste des emplois', 'Liste des emplois')) ?></h2>
             <p class="muted"><?= count($emplois) ?> <?= htmlspecialchars(theme_t('resultat(s) affiche(s)', 'resultat(s) affiche(s)')) ?></p>
         </div>
-        <div class="actions">
-            <a href="<?= htmlspecialchars(emploi_export_pdf_url()) ?>" class="btn btn--secondary">
-                <i class="fa-solid fa-file-pdf"></i>
-                <?= htmlspecialchars(theme_t('Exporter PDF', 'Exporter PDF')) ?>
-            </a>
-            <a href="<?= htmlspecialchars(theme_url('VIEW/backoffice/admin-emplois-ajouter.php')) ?>" class="btn btn--primary">
-                <i class="fa-solid fa-plus"></i>
-                <?= htmlspecialchars(theme_t('Ajouter un emploi', 'Ajouter un emploi')) ?>
-            </a>
-        </div>
+        <a href="<?= htmlspecialchars(theme_url('VIEW/backoffice/admin-emplois-ajouter.php')) ?>" class="btn btn--primary">
+            <i class="fa-solid fa-plus"></i>
+            <?= htmlspecialchars(theme_t('Ajouter un emploi', 'Ajouter un emploi')) ?>
+        </a>
     </div>
 
     <?php if (!empty($emplois)): ?>
@@ -531,11 +321,11 @@ theme_render_start([
                     <tr>
                         <th>ID</th>
                         <th><?= htmlspecialchars(theme_t('Agent', 'Agent')) ?></th>
+                        <th><?= htmlspecialchars(theme_t('Telephone', 'Telephone')) ?></th>
                         <th><?= htmlspecialchars(theme_t('Service', 'Service')) ?></th>
                         <th><?= htmlspecialchars(theme_t('Shift', 'Shift')) ?></th>
                         <th><?= htmlspecialchars(theme_t('Date', 'Date')) ?></th>
                         <th><?= htmlspecialchars(theme_t('Statut', 'Statut')) ?></th>
-                        <th><?= htmlspecialchars(theme_t('Code QR', 'Code QR')) ?></th>
                         <th><?= htmlspecialchars(theme_t('Actions avancees', 'Actions avancees')) ?></th>
                     </tr>
                 </thead>
@@ -545,6 +335,9 @@ theme_render_start([
                             <td><?= (int) $emploi['id_emploi'] ?></td>
                             <td>
                                 <?= htmlspecialchars(($emploi['agent_nom'] ?? 'N/A') . ' ' . ($emploi['agent_prenom'] ?? '')) ?>
+                            </td>
+                            <td>
+                                <span class="badge"><i class="fa-solid fa-phone"></i> <?= htmlspecialchars(emploi_phone_display($emploi['agent_telephone'] ?? '')) ?></span>
                             </td>
                             <td><?= htmlspecialchars($emploi['nom_service'] ?? 'N/A') ?></td>
                             <td>
@@ -559,15 +352,6 @@ theme_render_start([
                                 </span>
                             </td>
                             <td>
-                                <?php if (!empty($emploi['qr_token'])): ?>
-                                    <a href="<?= htmlspecialchars(emploi_qr_page_url($emploi), ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener" class="qr-preview" title="<?= htmlspecialchars(theme_t('Voir emploi par QR', 'Voir emploi par QR')) ?>">
-                                        <img src="<?= htmlspecialchars(emploi_qr_image_url($emploi, 96), ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars(theme_t('Code QR emploi', 'Code QR emploi')) ?>">
-                                    </a>
-                                <?php else: ?>
-                                    <span class="muted"><?= htmlspecialchars(theme_t('QR manquant', 'QR manquant')) ?></span>
-                                <?php endif; ?>
-                            </td>
-                            <td>
                                 <div class="actions">
                                     <a href="<?= htmlspecialchars(theme_url('VIEW/backoffice/admin-emplois-modifier.php?id=' . $emploi['id_emploi'])) ?>" class="btn btn--warning">
                                         <i class="fa-solid fa-pen"></i>
@@ -577,14 +361,16 @@ theme_render_start([
                                         <i class="fa-solid fa-trash"></i>
                                         <?= htmlspecialchars(theme_t('Supprimer', 'Supprimer')) ?>
                                     </a>
+                                    <?php $message = emploi_message($emploi); ?>
+                                    <a href="<?= htmlspecialchars(emploi_sms_url($emploi)) ?>" class="btn btn--ghost" title="<?= htmlspecialchars(theme_t('Envoyer SMS', 'Envoyer SMS')) ?>" data-sms-action data-phone="<?= htmlspecialchars(emploi_phone_for_link(), ENT_QUOTES, 'UTF-8') ?>" data-message="<?= htmlspecialchars(emploi_message($emploi), ENT_QUOTES, 'UTF-8') ?>">
+                                        <i class="fa-solid fa-comment-sms"></i>
+                                    </a>
+                                    <a href="<?= htmlspecialchars(emploi_whatsapp_url($emploi)) ?>" target="_blank" rel="noopener" class="btn btn--secondary" title="<?= htmlspecialchars(theme_t('Envoyer WhatsApp', 'Envoyer WhatsApp')) ?>">
+                                        <i class="fa-brands fa-whatsapp"></i>
+                                    </a>
                                     <a href="<?= htmlspecialchars(emploi_calendar_url($emploi)) ?>" target="_blank" rel="noopener" class="btn btn--ghost" title="<?= htmlspecialchars(theme_t('Ajouter au calendrier', 'Ajouter au calendrier')) ?>">
                                         <i class="fa-solid fa-calendar-plus"></i>
                                     </a>
-                                    <?php if (!empty($emploi['qr_token'])): ?>
-                                        <a href="<?= htmlspecialchars(emploi_qr_page_url($emploi), ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener" class="btn btn--secondary" title="<?= htmlspecialchars(theme_t('Ouvrir le QR', 'Ouvrir le QR')) ?>">
-                                            <i class="fa-solid fa-qrcode"></i>
-                                        </a>
-                                    <?php endif; ?>
                                 </div>
                             </td>
                         </tr>
@@ -617,51 +403,72 @@ theme_render_start([
         </div>
     </div>
 
-    <div class="calendar-wrapper">
-        <div class="calendar-header-days">
-            <div><?= htmlspecialchars(theme_t('Lun', 'الإثنين')) ?></div>
-            <div><?= htmlspecialchars(theme_t('Mar', 'الثلاثاء')) ?></div>
-            <div><?= htmlspecialchars(theme_t('Mer', 'الأربعاء')) ?></div>
-            <div><?= htmlspecialchars(theme_t('Jeu', 'الخميس')) ?></div>
-            <div><?= htmlspecialchars(theme_t('Ven', 'الجمعة')) ?></div>
-            <div><?= htmlspecialchars(theme_t('Sam', 'السبت')) ?></div>
-            <div><?= htmlspecialchars(theme_t('Dim', 'الأحد')) ?></div>
-        </div>
-        <div class="calendar-grid">
-            <?php
-            $monthStart = $calendarMonth . '-01';
-            $daysInMonth = (int) date('t', strtotime($monthStart));
-            $firstWeekday = (int) date('N', strtotime($monthStart));
-            for ($blank = 1; $blank < $firstWeekday; $blank++):
-            ?>
-                <div class="calendar-day calendar-day--blank"></div>
-            <?php endfor; ?>
+    <div class="calendar-grid">
+        <?php
+        $monthStart = $calendarMonth . '-01';
+        $daysInMonth = (int) date('t', strtotime($monthStart));
+        $firstWeekday = (int) date('N', strtotime($monthStart));
+        for ($blank = 1; $blank < $firstWeekday; $blank++):
+        ?>
+            <div class="calendar-day calendar-day--blank"></div>
+        <?php endfor; ?>
 
-            <?php for ($day = 1; $day <= $daysInMonth; $day++):
-                $dateKey = $calendarMonth . '-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT);
-                $dayItems = $calendarItems[$dateKey] ?? [];
-            ?>
-                <div class="calendar-day <?= $dateKey === date('Y-m-d') ? 'is-today' : '' ?>">
-                    <div class="calendar-day__head">
-                        <strong><?= $day ?></strong>
-                        <?php if (!empty($dayItems)): ?>
-                            <span class="badge"><?= count($dayItems) ?></span>
-                        <?php endif; ?>
-                    </div>
-                    <div class="calendar-events">
-                        <?php foreach (array_slice($dayItems, 0, 3) as $item): ?>
-                            <div class="calendar-event" title="<?= htmlspecialchars(($item['agent_nom'] ?? '') . ' - ' . ($item['nom_service'] ?? '')) ?>">
-                                <strong><?= htmlspecialchars(substr($item['heure_debut'] ?? '00:00', 0, 5)) ?></strong>
-                                <span><?= htmlspecialchars($item['agent_nom'] ?? 'N/A') ?></span>
-                            </div>
-                        <?php endforeach; ?>
-                        <?php if (count($dayItems) > 3): ?>
-                            <div class="calendar-more">+<?= count($dayItems) - 3 ?></div>
-                        <?php endif; ?>
-                    </div>
+        <?php for ($day = 1; $day <= $daysInMonth; $day++):
+            $dateKey = $calendarMonth . '-' . str_pad((string) $day, 2, '0', STR_PAD_LEFT);
+            $dayItems = $calendarItems[$dateKey] ?? [];
+        ?>
+            <div class="calendar-day <?= $dateKey === date('Y-m-d') ? 'is-today' : '' ?>">
+                <div class="calendar-day__head">
+                    <strong><?= $day ?></strong>
+                    <?php if (!empty($dayItems)): ?>
+                        <span class="badge"><?= count($dayItems) ?></span>
+                    <?php endif; ?>
                 </div>
-            <?php endfor; ?>
-        </div>
+                <?php foreach (array_slice($dayItems, 0, 3) as $item): ?>
+                    <div class="calendar-event">
+                        <strong><?= htmlspecialchars(substr($item['heure_debut'] ?? '00:00', 0, 5)) ?></strong>
+                        <span><?= htmlspecialchars(($item['agent_nom'] ?? 'N/A') . ' ' . ($item['agent_prenom'] ?? '')) ?></span>
+                    </div>
+                <?php endforeach; ?>
+                <?php if (count($dayItems) > 3): ?>
+                    <small class="muted">+<?= count($dayItems) - 3 ?> <?= htmlspecialchars(theme_t('autres', 'autres')) ?></small>
+                <?php endif; ?>
+            </div>
+        <?php endfor; ?>
     </div>
 </div>
+<script>
+(function () {
+    var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+
+    function copyText(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+            return navigator.clipboard.writeText(text);
+        }
+
+        var textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand('copy');
+        textarea.remove();
+        return Promise.resolve();
+    }
+
+    document.querySelectorAll('[data-sms-action]').forEach(function (link) {
+        link.addEventListener('click', function (event) {
+            if (isMobile) return;
+
+            event.preventDefault();
+            var text = 'Numero: ' + (link.dataset.phone || '') + "\nMessage: " + (link.dataset.message || '');
+            copyText(text).then(function () {
+                alert('Sur PC, Chrome ne peut pas ouvrir SMS directement.\nLe numero et le message sont copies:\n\n' + text);
+            });
+        });
+    });
+})();
+</script>
 <?php theme_render_end(); ?>

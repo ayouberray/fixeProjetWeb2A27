@@ -10,7 +10,8 @@ $filters = [
 ];
 $shifts = $ctrl->getAllShifts($filters);
 $notifications = $ctrl->getNotificationsShifts();
-$stats = $ctrl->getStatistiquesShifts();
+$shiftContacts = $ctrl->getContactsByShiftIds(array_column($shifts, 'id_shift'));
+$defaultNotificationPhone = '58739548';
 
 function shift_duree_label($minutes) {
     $minutes = max(0, (int) $minutes);
@@ -32,8 +33,13 @@ function shift_periode_label($heureDebut) {
     return theme_t('Soir', 'Soir');
 }
 
-function shift_export_pdf_url() {
-    return theme_url('VIEW/backoffice/admin-shifts-export-pdf.php?' . http_build_query($_GET));
+function shift_contact_message($contact) {
+    $agent = trim(($contact['agent_nom'] ?? '') . ' ' . ($contact['agent_prenom'] ?? ''));
+    $date = date('d/m/Y', strtotime($contact['date_travail']));
+    $heureDebut = substr($contact['heure_debut'] ?? '00:00', 0, 5);
+    $heureFin = substr($contact['heure_fin'] ?? '00:00', 0, 5);
+
+    return "Bonjour " . ($agent !== '' ? $agent : 'agent') . ", rappel: votre shift " . ($contact['nom_shift'] ?? 'N/A') . " est planifie le $date de $heureDebut a $heureFin pour le service " . ($contact['nom_service'] ?? 'N/A') . ".";
 }
 
 theme_render_start([
@@ -44,224 +50,11 @@ theme_render_start([
 ]);
 ?>
 <div class="stats-launcher">
-    <button type="button" class="btn btn--primary stats-toggle" id="shiftStatsToggleBtn" data-stats-toggle aria-expanded="false" aria-controls="shiftStatsPanel">
+    <a class="btn btn--primary stats-toggle" href="<?= htmlspecialchars(theme_url('VIEW/backoffice/admin-shifts-statistiques.php')) ?>">
         <i class="fa-solid fa-chart-pie"></i>
         <?= htmlspecialchars(theme_t('Statistique', 'Statistique')) ?>
-    </button>
+    </a>
 </div>
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
-<div class="infographic-dashboard infographic-dashboard--shifts" id="shiftStatsPanel" data-advanced-stats hidden>
-    <div class="infographic-header">
-        <h2><?= htmlspecialchars(theme_t('Survey Statistics Infographic - Shifts', 'Survey Statistics Infographic - Shifts')) ?></h2>
-    </div>
-
-    <div class="info-quick-stats">
-        <article class="info-stat-card">
-            <i class="fa-solid fa-layer-group"></i>
-            <div>
-                <strong data-countup="<?= (int) ($stats['total'] ?? 0) ?>"><?= (int) ($stats['total'] ?? 0) ?></strong>
-                <span><?= htmlspecialchars(theme_t('Total Shifts', 'Total Shifts')) ?></span>
-            </div>
-        </article>
-        <article class="info-stat-card">
-            <i class="fa-solid fa-link"></i>
-            <div>
-                <strong data-countup="<?= (int) ($stats['emplois_lies'] ?? 0) ?>"><?= (int) ($stats['emplois_lies'] ?? 0) ?></strong>
-                <span><?= htmlspecialchars(theme_t('Emplois lies', 'Emplois lies')) ?></span>
-            </div>
-        </article>
-        <article class="info-stat-card">
-            <i class="fa-solid fa-business-time" style="color: #8b5cf6; background: #f5f3ff;"></i>
-            <div>
-                <strong data-countup="<?= (int) ($stats['duree_moyenne'] ?? 0) ?>"><?= (int) ($stats['duree_moyenne'] ?? 0) ?></strong>
-                <span><?= htmlspecialchars(theme_t('Duree moyenne min', 'Duree moyenne min')) ?></span>
-            </div>
-        </article>
-        <article class="info-stat-card">
-            <i class="fa-solid fa-stopwatch" style="color: #ec4899; background: #fdf2f8;"></i>
-            <div>
-                <strong data-countup="<?= (int) ($stats['duree_max'] ?? 0) ?>"><?= (int) ($stats['duree_max'] ?? 0) ?></strong>
-                <span><?= htmlspecialchars(theme_t('Duree max min', 'Duree max min')) ?></span>
-            </div>
-        </article>
-    </div>
-
-    <div class="infographic-grid">
-        <div class="info-card">
-            <div class="info-card__head">
-                <h3><?= htmlspecialchars(theme_t('Repartition par periode', 'Repartition par periode')) ?></h3>
-                <span class="info-card__badge">Live</span>
-            </div>
-            <div class="info-chart-wrap">
-                <canvas id="shiftChartPeriode"></canvas>
-            </div>
-        </div>
-
-        <div class="info-card">
-            <div class="info-card__head">
-                <h3><?= htmlspecialchars(theme_t('Distribution par duree', 'Distribution par duree')) ?></h3>
-                <span class="info-card__badge">3 groupes</span>
-            </div>
-            <div class="info-chart-wrap">
-                <canvas id="shiftChartDuree"></canvas>
-            </div>
-        </div>
-
-        <div class="info-card">
-            <div class="info-card__head">
-                <h3><?= htmlspecialchars(theme_t('Etat d utilisation', 'Etat d utilisation')) ?></h3>
-            </div>
-            <div class="info-chart-wrap">
-                <canvas id="shiftChartUsage"></canvas>
-            </div>
-        </div>
-
-        <div class="info-card info-card--wide">
-            <div class="info-card__head">
-                <h3><?= htmlspecialchars(theme_t('Top shifts par utilisation', 'Top shifts par utilisation')) ?></h3>
-                <span class="info-card__badge"><?= count($stats['par_utilisation'] ?? []) ?> items</span>
-            </div>
-            <div class="info-chart-wrap">
-                <canvas id="shiftChartTop"></canvas>
-            </div>
-        </div>
-
-        <div class="info-card">
-            <div class="info-card__head">
-                <h3><?= htmlspecialchars(theme_t('Depart par heure', 'Depart par heure')) ?></h3>
-            </div>
-            <div class="info-chart-wrap">
-                <canvas id="shiftChartHoraire"></canvas>
-            </div>
-        </div>
-
-        <div class="info-card info-card--summary">
-            <div class="info-card__head">
-                <h3><?= htmlspecialchars(theme_t('Resume flash', 'Resume flash')) ?></h3>
-            </div>
-            <div class="shift-summary-stack">
-                <div class="notification notification--info">
-                    <i class="fa-solid fa-clock"></i>
-                    <div><strong><?= htmlspecialchars(theme_t('Moyenne', 'Moyenne')) ?>: <?= shift_duree_label((int) ($stats['duree_moyenne'] ?? 0)) ?></strong></div>
-                </div>
-                <div class="notification notification--warning">
-                    <i class="fa-solid fa-bolt"></i>
-                    <div><strong><?= htmlspecialchars(theme_t('Record', 'Record')) ?>: <?= shift_duree_label((int) ($stats['duree_max'] ?? 0)) ?></strong></div>
-                </div>
-                <div class="notification notification--success">
-                    <i class="fa-solid fa-circle-check"></i>
-                    <div><strong><?= (int) ($stats['shifts_utilises'] ?? 0) ?> <?= htmlspecialchars(theme_t('shift(s) utilises', 'shift(s) utilises')) ?></strong></div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<script>
-(function () {
-    var btn = document.getElementById('shiftStatsToggleBtn');
-    var panel = document.getElementById('shiftStatsPanel');
-    if (!btn || !panel || btn.dataset.ready === '1') return;
-    btn.dataset.ready = '1';
-
-    var charts = {};
-    var statsData = <?= json_encode($stats, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?: '{}' ?>;
-
-    function animateCounters() {
-        panel.querySelectorAll('[data-countup]').forEach(function (el) {
-            var target = parseInt(el.dataset.countup, 10) || 0;
-            var count = 0;
-            var increment = Math.max(1, target / 55);
-            if (target === 0) {
-                el.textContent = '0';
-                return;
-            }
-            var timer = setInterval(function () {
-                count += increment;
-                if (count >= target) {
-                    el.textContent = target;
-                    clearInterval(timer);
-                } else {
-                    el.textContent = Math.floor(count);
-                }
-            }, 16);
-        });
-    }
-
-    function initCharts() {
-        if (Object.keys(charts).length > 0 || typeof Chart === 'undefined') return;
-
-        var palette = ['#38bdf8', '#f59e0b', '#10b981', '#8b5cf6', '#ec4899', '#ef4444'];
-        var emptyOptions = { responsive: true, maintainAspectRatio: false };
-
-        charts.periode = new Chart(document.getElementById('shiftChartPeriode'), {
-            type: 'doughnut',
-            data: {
-                labels: (statsData.par_periode || []).map(function (i) { return i.label; }),
-                datasets: [{ data: (statsData.par_periode || []).map(function (i) { return i.value; }), backgroundColor: ['#f59e0b', '#10b981', '#3b82f6'], borderWidth: 0, hoverOffset: 10 }]
-            },
-            options: Object.assign({}, emptyOptions, { plugins: { legend: { position: 'bottom' } }, cutout: '68%' })
-        });
-
-        charts.duree = new Chart(document.getElementById('shiftChartDuree'), {
-            type: 'pie',
-            data: {
-                labels: (statsData.par_duree || []).map(function (i) { return i.label; }),
-                datasets: [{ data: (statsData.par_duree || []).map(function (i) { return i.value; }), backgroundColor: ['#38bdf8', '#8b5cf6', '#ec4899'], borderWidth: 0 }]
-            },
-            options: Object.assign({}, emptyOptions, { plugins: { legend: { position: 'bottom' } } })
-        });
-
-        charts.usage = new Chart(document.getElementById('shiftChartUsage'), {
-            type: 'doughnut',
-            data: {
-                labels: ['Utilises', 'Non utilises'],
-                datasets: [{ data: [statsData.shifts_utilises || 0, statsData.shifts_non_utilises || 0], backgroundColor: ['#10b981', '#ef4444'], borderWidth: 0 }]
-            },
-            options: Object.assign({}, emptyOptions, { plugins: { legend: { position: 'bottom' } }, cutout: '62%' })
-        });
-
-        charts.top = new Chart(document.getElementById('shiftChartTop'), {
-            type: 'bar',
-            data: {
-                labels: (statsData.par_utilisation || []).map(function (i) { return i.label; }),
-                datasets: [{ label: 'Emplois', data: (statsData.par_utilisation || []).map(function (i) { return i.value; }), backgroundColor: palette, borderRadius: 8 }]
-            },
-            options: Object.assign({}, emptyOptions, {
-                indexAxis: 'y',
-                plugins: { legend: { display: false } },
-                scales: { x: { beginAtZero: true, grid: { color: '#f1f5f9' } }, y: { grid: { display: false } } }
-            })
-        });
-
-        charts.horaire = new Chart(document.getElementById('shiftChartHoraire'), {
-            type: 'line',
-            data: {
-                labels: (statsData.par_horaire || []).map(function (i) { return i.label; }),
-                datasets: [{ label: 'Shifts', data: (statsData.par_horaire || []).map(function (i) { return i.value; }), borderColor: '#38bdf8', backgroundColor: 'rgba(56, 189, 248, 0.12)', fill: true, tension: 0.35, pointRadius: 5, pointBackgroundColor: '#38bdf8' }]
-            },
-            options: Object.assign({}, emptyOptions, { scales: { y: { beginAtZero: true }, x: { grid: { display: false } } } })
-        });
-    }
-
-    btn.addEventListener('click', function () {
-        var isHidden = panel.hasAttribute('hidden');
-        if (isHidden) {
-            panel.removeAttribute('hidden');
-            btn.setAttribute('aria-expanded', 'true');
-            initCharts();
-            animateCounters();
-            setTimeout(function () { panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); }, 50);
-            return;
-        }
-
-        panel.setAttribute('hidden', '');
-        btn.setAttribute('aria-expanded', 'false');
-    });
-})();
-</script>
 
 <div class="table-panel utility-panel">
     <div class="panel-toolbar">
@@ -337,16 +130,10 @@ theme_render_start([
             <h2><?= htmlspecialchars(theme_t('Liste des shifts', 'Liste des shifts')) ?></h2>
             <p class="muted"><?= count($shifts) ?> <?= htmlspecialchars(theme_t('resultat(s) affiche(s)', 'resultat(s) affiche(s)')) ?></p>
         </div>
-        <div class="actions">
-            <a href="<?= htmlspecialchars(shift_export_pdf_url()) ?>" class="btn btn--secondary">
-                <i class="fa-solid fa-file-pdf"></i>
-                <?= htmlspecialchars(theme_t('Exporter PDF', 'Exporter PDF')) ?>
-            </a>
-            <a href="<?= htmlspecialchars(theme_url('VIEW/backoffice/admin-shifts-ajouter.php')) ?>" class="btn btn--primary">
-                <i class="fa-solid fa-plus"></i>
-                <?= htmlspecialchars(theme_t('Ajouter un shift', 'Ajouter un shift')) ?>
-            </a>
-        </div>
+        <a href="<?= htmlspecialchars(theme_url('VIEW/backoffice/admin-shifts-ajouter.php')) ?>" class="btn btn--primary">
+            <i class="fa-solid fa-plus"></i>
+            <?= htmlspecialchars(theme_t('Ajouter un shift', 'Ajouter un shift')) ?>
+        </a>
     </div>
 
     <?php if (!empty($shifts)): ?>
@@ -361,6 +148,7 @@ theme_render_start([
                         <th><?= htmlspecialchars(theme_t('Heure fin', 'Heure fin')) ?></th>
                         <th><?= htmlspecialchars(theme_t('Duree', 'Duree')) ?></th>
                         <th><?= htmlspecialchars(theme_t('Utilisation', 'Utilisation')) ?></th>
+                        <th><?= htmlspecialchars(theme_t('Envoyer emploi', 'Envoyer emploi')) ?></th>
                         <th><?= htmlspecialchars(theme_t('Actions', 'Actions')) ?></th>
                     </tr>
                 </thead>
@@ -370,6 +158,7 @@ theme_render_start([
                         $dureeMinutes = (int) ($shift['duree_minutes'] ?? 0);
                         $emploisCount = (int) ($shift['emplois_count'] ?? 0);
                         $emploisPlanifies = (int) ($shift['emplois_planifies'] ?? 0);
+                        $contacts = $shiftContacts[(int) $shift['id_shift']] ?? [];
                         ?>
                         <tr>
                             <td><?= (int) $shift['id_shift'] ?></td>
@@ -381,6 +170,36 @@ theme_render_start([
                             <td>
                                 <strong><?= $emploisCount ?></strong> <?= htmlspecialchars(theme_t('emploi(s)', 'emploi(s)')) ?><br>
                                 <span class="muted"><?= $emploisPlanifies ?> <?= htmlspecialchars(theme_t('planifie(s)', 'planifie(s)')) ?></span>
+                            </td>
+                            <td>
+                                <?php if (!empty($contacts)): ?>
+                                    <?php foreach (array_slice($contacts, 0, 3) as $contact): ?>
+                                        <div class="contact-row">
+                                            <div>
+                                                <strong><?= htmlspecialchars(trim(($contact['agent_nom'] ?? '') . ' ' . ($contact['agent_prenom'] ?? ''))) ?></strong><br>
+                                                <span class="muted">
+                                                    <?= htmlspecialchars(date('d/m/Y', strtotime($contact['date_travail']))) ?>
+                                                    - <?= htmlspecialchars(substr($contact['heure_debut'] ?? '00:00', 0, 5)) ?>
+                                                    /
+                                                    <?= htmlspecialchars(substr($contact['heure_fin'] ?? '00:00', 0, 5)) ?>
+                                                </span>
+                                            </div>
+                                            <div class="send-emploi" data-send-emploi>
+                                                <label class="sr-only" for="send_phone_<?= (int) $contact['id_emploi'] ?>"><?= htmlspecialchars(theme_t('Numero destinataire', 'Numero destinataire')) ?></label>
+                                                <input id="send_phone_<?= (int) $contact['id_emploi'] ?>" type="tel" inputmode="tel" value="<?= htmlspecialchars($defaultNotificationPhone, ENT_QUOTES, 'UTF-8') ?>" placeholder="<?= htmlspecialchars(theme_t('Numero...', 'Numero...')) ?>" data-send-phone>
+                                                <button type="button" class="btn btn--secondary" data-send-button data-message="<?= htmlspecialchars(shift_contact_message($contact), ENT_QUOTES, 'UTF-8') ?>">
+                                                    <i class="fa-solid fa-paper-plane"></i>
+                                                    <?= htmlspecialchars(theme_t('Envoyer', 'Envoyer')) ?>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                    <?php if (count($contacts) > 3): ?>
+                                        <span class="muted">+<?= count($contacts) - 3 ?> <?= htmlspecialchars(theme_t('autres contacts', 'autres contacts')) ?></span>
+                                    <?php endif; ?>
+                                <?php else: ?>
+                                    <span class="muted"><?= htmlspecialchars(theme_t('Aucun agent planifie a venir', 'Aucun agent planifie a venir')) ?></span>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <div class="actions">
@@ -406,4 +225,61 @@ theme_render_start([
         </div>
     <?php endif; ?>
 </div>
+<script>
+(function () {
+    var isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+
+    function normalizePhone(phone) {
+        phone = (phone || '').trim().replace(/[^\d+]/g, '');
+        if (phone.indexOf('00') === 0) {
+            phone = '+' + phone.substring(2);
+        }
+        if (phone.charAt(0) !== '+' && /^\d{8}$/.test(phone)) {
+            phone = '+216' + phone;
+        }
+        return phone;
+    }
+
+    function copyText(text) {
+        if (navigator.clipboard && window.isSecureContext) {
+            return navigator.clipboard.writeText(text);
+        }
+
+        var textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed';
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        document.execCommand('copy');
+        textarea.remove();
+        return Promise.resolve();
+    }
+
+    document.querySelectorAll('[data-send-emploi]').forEach(function (row) {
+        var input = row.querySelector('[data-send-phone]');
+        var button = row.querySelector('[data-send-button]');
+        if (!input || !button) return;
+
+        button.addEventListener('click', function () {
+            var phone = normalizePhone(input.value);
+            if (!phone) {
+                input.focus();
+                return;
+            }
+
+            if (isMobile) {
+                window.location.href = 'sms:' + phone + '?body=' + encodeURIComponent(button.dataset.message || '');
+                return;
+            }
+
+            var text = 'Numero: ' + phone + "\nMessage: " + (button.dataset.message || '');
+            copyText(text).then(function () {
+                alert('Sur PC, Chrome ne peut pas ouvrir SMS directement.\nLe numero et le message sont copies:\n\n' + text);
+            });
+        });
+    });
+})();
+</script>
 <?php theme_render_end(); ?>
