@@ -1,148 +1,178 @@
-// ========== SCRIPT INNOC@V - TOUTES INTERACTIONS ==========
+(() => {
+    const body = document.body;
 
-// Loader
-window.addEventListener('load', () => {
-    const loader = document.querySelector('.loader');
-    if(loader) {
+    const initLoader = () => {
+        const loader = document.getElementById('pageLoader');
+        if (!loader) return;
+
         setTimeout(() => {
-            loader.classList.add('hide');
-            setTimeout(() => loader.remove(), 500);
-        }, 500);
-    }
-});
-
-
-const revealElements = document.querySelectorAll('.reveal');
-function checkReveal() {
-    revealElements.forEach(el => {
-        const rect = el.getBoundingClientRect();
-        if(rect.top < window.innerHeight - 100) el.classList.add('active');
-    });
-}
-window.addEventListener('scroll', checkReveal);
-window.addEventListener('load', checkReveal);
-
-// Compteurs animés
-function animateCounter(element, target, duration = 2000) {
-    let start = 0;
-    const increment = target / (duration / 16);
-    const update = () => {
-        start += increment;
-        if(start < target) {
-            element.textContent = Math.floor(start);
-            requestAnimationFrame(update);
-        } else element.textContent = target;
+            loader.classList.add('is-hidden');
+            setTimeout(() => loader.remove(), 360);
+        }, 220);
     };
-    update();
-}
-const statsObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-        if(entry.isIntersecting) {
-            const numbers = entry.target.querySelectorAll('.number');
-            numbers.forEach(num => {
-                const target = parseInt(num.getAttribute('data-target'));
-                if(target && !num.classList.contains('animated')) {
-                    num.classList.add('animated');
-                    animateCounter(num, target);
+
+    const initReveal = () => {
+        const items = document.querySelectorAll('.reveal');
+        if (!items.length) return;
+
+        const observer = new IntersectionObserver((entries, obs) => {
+            entries.forEach((entry) => {
+                if (!entry.isIntersecting) return;
+                entry.target.classList.add('is-visible');
+                obs.unobserve(entry.target);
+            });
+        }, { threshold: 0.14 });
+
+        items.forEach((el) => observer.observe(el));
+    };
+
+    const animateCounter = (el, target, duration = 1600) => {
+        const start = 0;
+        const startAt = performance.now();
+
+        const step = (time) => {
+            const progress = Math.min((time - startAt) / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            const value = Math.round(start + (target - start) * eased);
+            el.textContent = value.toLocaleString('fr-FR');
+
+            if (progress < 1) {
+                requestAnimationFrame(step);
+            }
+        };
+
+        requestAnimationFrame(step);
+    };
+
+    const initCounters = () => {
+        const counters = document.querySelectorAll('[data-countup]');
+        if (!counters.length) return;
+
+        const observer = new IntersectionObserver((entries, obs) => {
+            entries.forEach((entry) => {
+                if (!entry.isIntersecting) return;
+
+                const target = Number.parseInt(entry.target.getAttribute('data-countup') || '0', 10);
+                if (Number.isFinite(target)) {
+                    animateCounter(entry.target, target);
                 }
+                obs.unobserve(entry.target);
             });
-            statsObserver.unobserve(entry.target);
+        }, { threshold: 0.45 });
+
+        counters.forEach((counter) => observer.observe(counter));
+    };
+
+    const parseImages = () => {
+        const raw = body.getAttribute('data-bg-images') || '[]';
+        try {
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+        } catch (error) {
+            return [];
         }
-    });
-}, { threshold: 0.5 });
-const statsGrid = document.querySelector('.stats-grid');
-if(statsGrid) statsObserver.observe(statsGrid);
+    };
 
-// Slideshow automatique
-let currentSlide = 0;
-const slides = document.querySelectorAll('.hero-slideshow .slide');
-if(slides.length > 0) {
-    setInterval(() => {
-        slides[currentSlide].classList.remove('active');
-        currentSlide = (currentSlide + 1) % slides.length;
-        slides[currentSlide].classList.add('active');
-    }, 5000);
-}
+    const initSlideshow = () => {
+        const mode = body.getAttribute('data-background-mode');
+        if (mode !== 'slideshow') return;
 
-// Traductions FR/AR + RTL et Theme
-let currentLang = localStorage.getItem('lang') || 'fr';
-let currentTheme = localStorage.getItem('theme') || 'light';
-document.documentElement.setAttribute('data-theme', currentTheme);
+        const slides = document.querySelectorAll('.background-stage__slide');
+        if (!slides.length) return;
 
-const translations = {
-    fr: {
-        home: 'Accueil', offers: 'Offres', admin: 'Admin Offres', candidatures: 'Candidatures',
-        seeOffers: 'Voir les offres',
-        heroBadge: '✨ Recrutement public simplifié', heroTitle: 'Offres d\'emploi<br>municipales digitalisées',
-        heroDesc: 'Postulez en ligne aux offres de la fonction publique territoriale',
-        heroBtn1: 'Découvrir les offres', heroBtn2: 'En savoir plus',
-        statsTitle: 'Chiffres Clés', totalOffers: 'Total offres', openOffers: 'Offres ouvertes',
-        totalApplications: 'Candidatures reçues', satisfaction: 'Taux de satisfaction',
-        latestOffers: '📢 Dernières offres',
-        newsTitle: 'Actualités recrutement', readMore: 'Lire la suite',
-        footerDesc: 'Plateforme de gestion des offres et candidatures pour les municipalités',
-        monFri: 'Lundi - Vendredi: 8h30 - 15h30', online: 'Formulaire de contact 24h/24', allRights: 'Tous droits réservés'
-    },
-    ar: {
-        home: 'الرئيسية', offers: 'العروض', admin: 'إدارة العروض', candidatures: 'الترشحات',
-        seeOffers: 'تصفح العروض',
-        heroBadge: '✨ توظيف عمومي مبسط', heroTitle: 'عروض عمل<br>بلدية رقمية',
-        heroDesc: 'قدم عبر الإنترنت لعروض الوظيفة العمومية المحلية',
-        heroBtn1: 'استكشاف العروض', heroBtn2: 'اقرأ المزيد',
-        statsTitle: 'إحصائيات رئيسية', totalOffers: 'إجمالي العروض', openOffers: 'العروض المفتوحة',
-        totalApplications: 'الترشحات المستلمة', satisfaction: 'نسبة الرضا',
-        latestOffers: '📢 أحدث العروض',
-        newsTitle: 'أخبار التوظيف', readMore: 'اقرأ المزيد',
-        footerDesc: 'منصة إدارة عروض العمل والترشحات للبلديات',
-        monFri: 'الإثنين - الجمعة: 8:30 - 15:30', online: 'نموذج اتصال 24/24', allRights: 'جميع الحقوق محفوظة'
-    }
-};
+        const images = parseImages();
+        if (!images.length) return;
 
-function switchLanguage(lang) {
-    currentLang = lang;
-    localStorage.setItem('lang', lang);
-    document.querySelectorAll('[data-i18n]').forEach(el => {
-        const key = el.getAttribute('data-i18n');
-        if(translations[lang][key]) {
-            if(el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.placeholder = translations[lang][key];
-            else el.innerHTML = translations[lang][key];
-        }
-    });
-    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
-    document.documentElement.lang = lang;
-    document.querySelectorAll('.lang-btn').forEach(btn => {
-        if(btn.getAttribute('data-lang') === lang) btn.classList.add('active');
-        else btn.classList.remove('active');
-    });
-}
-document.addEventListener('DOMContentLoaded', () => {
-    switchLanguage(currentLang);
-    
-    // Theme Toggle
-    const themeBtns = document.querySelectorAll('#theme-toggle');
-    themeBtns.forEach(btn => {
-        if (currentTheme === 'dark') {
-            btn.innerHTML = '<i class="fas fa-sun"></i>';
-        }
-        btn.addEventListener('click', () => {
-            currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', currentTheme);
-            localStorage.setItem('theme', currentTheme);
-            document.querySelectorAll('#theme-toggle').forEach(b => {
-                b.innerHTML = currentTheme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
-            });
+        slides[0].style.backgroundImage = `url('${images[0]}')`;
+        slides[0].classList.add('is-active');
+
+        if (images.length === 1) return;
+
+        let activeImage = 0;
+
+        setInterval(() => {
+            const nextImage = (activeImage + 1) % images.length;
+            const nextLayer = slides[(activeImage + 1) % slides.length];
+            const oldLayer = slides[activeImage % slides.length];
+
+            nextLayer.style.backgroundImage = `url('${images[nextImage]}')`;
+            nextLayer.classList.add('is-active');
+            oldLayer.classList.remove('is-active');
+
+            activeImage = nextImage;
+        }, 5000);
+    };
+
+    const initToasts = () => {
+        const stack = document.getElementById('toastStack');
+        if (!stack) return;
+
+        const closeToast = (toast) => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(20px)';
+            setTimeout(() => toast.remove(), 240);
+        };
+
+        stack.querySelectorAll('[data-toast]').forEach((toast) => {
+            setTimeout(() => closeToast(toast), 3200);
         });
-    });
-});
-document.querySelectorAll('.lang-btn:not(#theme-toggle)').forEach(btn => {
-    btn.addEventListener('click', () => switchLanguage(btn.getAttribute('data-lang')));
-});
 
-// Toast helper (si besoin)
-window.showToast = function(message, type = 'success') {
-    const toast = document.createElement('div');
-    toast.className = `toast-notif ${type === 'error' ? 'error' : ''}`;
-    toast.innerHTML = `<i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-circle'}"></i><span>${message}</span>`;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
-};
+        window.showToast = (message, type = 'info') => {
+            const toast = document.createElement('div');
+            toast.className = `toast toast--${type}`;
+            toast.textContent = message;
+            stack.appendChild(toast);
+            setTimeout(() => closeToast(toast), 3200);
+        };
+    };
+
+    const initAdvancedStats = () => {
+        const toggle = document.querySelector('[data-stats-toggle]');
+        const panel = document.querySelector('[data-advanced-stats]');
+        if (!toggle || !panel) return;
+        if (toggle.dataset.ready === '1') return;
+        toggle.dataset.ready = '1';
+
+        const animateRings = () => {
+            panel.querySelectorAll('.stat-ring').forEach((ring) => {
+                const target = Number.parseInt(ring.style.getPropertyValue('--value') || '0', 10);
+                const startAt = performance.now();
+                const duration = 900;
+
+                const step = (time) => {
+                    const progress = Math.min((time - startAt) / duration, 1);
+                    const eased = 1 - Math.pow(1 - progress, 3);
+                    ring.style.setProperty('--progress', Math.round(target * eased));
+
+                    if (progress < 1) {
+                        requestAnimationFrame(step);
+                    }
+                };
+
+                ring.style.setProperty('--progress', '0');
+                requestAnimationFrame(step);
+            });
+        };
+
+        toggle.addEventListener('click', () => {
+            const isOpen = !panel.hasAttribute('hidden');
+            if (isOpen) {
+                panel.setAttribute('hidden', '');
+                toggle.setAttribute('aria-expanded', 'false');
+                return;
+            }
+
+            panel.removeAttribute('hidden');
+            toggle.setAttribute('aria-expanded', 'true');
+            animateRings();
+            panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+    };
+
+    window.addEventListener('load', initLoader);
+    initReveal();
+    initCounters();
+    initSlideshow();
+    initToasts();
+    initAdvancedStats();
+})();
