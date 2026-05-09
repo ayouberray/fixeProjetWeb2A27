@@ -9,7 +9,7 @@ class Statistiques {
     public function __construct() {
         try {
             $this->db = new PDO(
-                'mysql:host=localhost;dbname=innogov_db;charset=utf8',
+                'mysql:host=localhost;dbname=2a27;charset=utf8',
                 'root',
                 '',
                 [
