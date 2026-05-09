@@ -1,282 +1,178 @@
-// ============================================
-// INNOGOV - SCRIPT COMPLET
-// ============================================
+(() => {
+    const body = document.body;
 
-document.addEventListener('DOMContentLoaded', function() {
+    const initLoader = () => {
+        const loader = document.getElementById('pageLoader');
+        if (!loader) return;
 
-    // ========== 1. LOADER ==========
-    const loader = document.querySelector('.loader');
-    if (loader) {
         setTimeout(() => {
-            loader.classList.add('hide');
-        }, 500);
-    }
+            loader.classList.add('is-hidden');
+            setTimeout(() => loader.remove(), 360);
+        }, 220);
+    };
 
-    // ========== 2. NAVBAR SCROLL EFFECT ==========
-    const navbar = document.querySelector('.navbar');
-    if (navbar) {
-        window.addEventListener('scroll', () => {
-            if (window.scrollY > 50) {
-                navbar.classList.add('scrolled');
-            } else {
-                navbar.classList.remove('scrolled');
+    const initReveal = () => {
+        const items = document.querySelectorAll('.reveal');
+        if (!items.length) return;
+
+        const observer = new IntersectionObserver((entries, obs) => {
+            entries.forEach((entry) => {
+                if (!entry.isIntersecting) return;
+                entry.target.classList.add('is-visible');
+                obs.unobserve(entry.target);
+            });
+        }, { threshold: 0.14 });
+
+        items.forEach((el) => observer.observe(el));
+    };
+
+    const animateCounter = (el, target, duration = 1600) => {
+        const start = 0;
+        const startAt = performance.now();
+
+        const step = (time) => {
+            const progress = Math.min((time - startAt) / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            const value = Math.round(start + (target - start) * eased);
+            el.textContent = value.toLocaleString('fr-FR');
+
+            if (progress < 1) {
+                requestAnimationFrame(step);
             }
-        });
-    }
+        };
 
-    // ========== 3. SLIDESHOW AUTOMATIQUE (pour frontoffice) ==========
-    const slides = document.querySelectorAll('.hero-slideshow .slide');
-    if (slides.length > 0) {
-        let currentSlide = 0;
-        
-        function showSlide(index) {
-            slides.forEach((slide, i) => {
-                slide.classList.remove('active');
-                if (i === index) {
-                    slide.classList.add('active');
+        requestAnimationFrame(step);
+    };
+
+    const initCounters = () => {
+        const counters = document.querySelectorAll('[data-countup]');
+        if (!counters.length) return;
+
+        const observer = new IntersectionObserver((entries, obs) => {
+            entries.forEach((entry) => {
+                if (!entry.isIntersecting) return;
+
+                const target = Number.parseInt(entry.target.getAttribute('data-countup') || '0', 10);
+                if (Number.isFinite(target)) {
+                    animateCounter(entry.target, target);
                 }
+                obs.unobserve(entry.target);
             });
+        }, { threshold: 0.45 });
+
+        counters.forEach((counter) => observer.observe(counter));
+    };
+
+    const parseImages = () => {
+        const raw = body.getAttribute('data-bg-images') || '[]';
+        try {
+            const parsed = JSON.parse(raw);
+            return Array.isArray(parsed) ? parsed.filter(Boolean) : [];
+        } catch (error) {
+            return [];
         }
-        
-        function nextSlide() {
-            currentSlide = (currentSlide + 1) % slides.length;
-            showSlide(currentSlide);
-        }
-        
-        // Changer toutes les 3 secondes (3000ms)
-        setInterval(nextSlide, 3000);
-    }
+    };
 
-    // ========== 4. TOAST NOTIFICATION ==========
-    window.showNotification = function(message, type = 'success') {
-        const oldNotifications = document.querySelectorAll('.toast-notification');
-        oldNotifications.forEach(notif => notif.remove());
+    const initSlideshow = () => {
+        const mode = body.getAttribute('data-background-mode');
+        if (mode !== 'slideshow') return;
 
-        const notification = document.createElement('div');
-        notification.className = `toast-notification toast-${type}`;
-        notification.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i><span>${message}</span>`;
-        notification.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: ${type === 'success' ? '#006D5B' : '#EF4444'};
-            color: white;
-            padding: 14px 24px;
-            border-radius: 12px;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            z-index: 9999;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            animation: slideIn 0.3s ease;
-            font-family: 'DM Sans', sans-serif;
-            font-weight: 500;
-            cursor: pointer;
-        `;
+        const slides = document.querySelectorAll('.background-stage__slide');
+        if (!slides.length) return;
 
-        document.body.appendChild(notification);
+        const images = parseImages();
+        if (!images.length) return;
 
-        setTimeout(() => {
-            notification.style.animation = 'slideOut 0.3s ease';
-            setTimeout(() => {
-                if (notification && notification.remove) notification.remove();
-            }, 300);
-        }, 4000);
+        slides[0].style.backgroundImage = `url('${images[0]}')`;
+        slides[0].classList.add('is-active');
 
-        notification.addEventListener('click', () => {
-            notification.style.animation = 'slideOut 0.3s ease';
-            setTimeout(() => notification.remove(), 300);
+        if (images.length === 1) return;
+
+        let activeImage = 0;
+
+        setInterval(() => {
+            const nextImage = (activeImage + 1) % images.length;
+            const nextLayer = slides[(activeImage + 1) % slides.length];
+            const oldLayer = slides[activeImage % slides.length];
+
+            nextLayer.style.backgroundImage = `url('${images[nextImage]}')`;
+            nextLayer.classList.add('is-active');
+            oldLayer.classList.remove('is-active');
+
+            activeImage = nextImage;
+        }, 5000);
+    };
+
+    const initToasts = () => {
+        const stack = document.getElementById('toastStack');
+        if (!stack) return;
+
+        const closeToast = (toast) => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(20px)';
+            setTimeout(() => toast.remove(), 240);
+        };
+
+        stack.querySelectorAll('[data-toast]').forEach((toast) => {
+            setTimeout(() => closeToast(toast), 3200);
+        });
+
+        window.showToast = (message, type = 'info') => {
+            const toast = document.createElement('div');
+            toast.className = `toast toast--${type}`;
+            toast.textContent = message;
+            stack.appendChild(toast);
+            setTimeout(() => closeToast(toast), 3200);
+        };
+    };
+
+    const initAdvancedStats = () => {
+        const toggle = document.querySelector('[data-stats-toggle]');
+        const panel = document.querySelector('[data-advanced-stats]');
+        if (!toggle || !panel) return;
+        if (toggle.dataset.ready === '1') return;
+        toggle.dataset.ready = '1';
+
+        const animateRings = () => {
+            panel.querySelectorAll('.stat-ring').forEach((ring) => {
+                const target = Number.parseInt(ring.style.getPropertyValue('--value') || '0', 10);
+                const startAt = performance.now();
+                const duration = 900;
+
+                const step = (time) => {
+                    const progress = Math.min((time - startAt) / duration, 1);
+                    const eased = 1 - Math.pow(1 - progress, 3);
+                    ring.style.setProperty('--progress', Math.round(target * eased));
+
+                    if (progress < 1) {
+                        requestAnimationFrame(step);
+                    }
+                };
+
+                ring.style.setProperty('--progress', '0');
+                requestAnimationFrame(step);
+            });
+        };
+
+        toggle.addEventListener('click', () => {
+            const isOpen = !panel.hasAttribute('hidden');
+            if (isOpen) {
+                panel.setAttribute('hidden', '');
+                toggle.setAttribute('aria-expanded', 'false');
+                return;
+            }
+
+            panel.removeAttribute('hidden');
+            toggle.setAttribute('aria-expanded', 'true');
+            animateRings();
+            panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         });
     };
 
-    // ========== 5. VALIDATION DU FORMULAIRE DE RÉCLAMATION (FRONTOFFICE) ==========
-    const reclamationForm = document.getElementById('reclamationForm');
-    if (reclamationForm) {
-        const categorie = document.getElementById('categorie');
-        const objet = document.getElementById('objet');
-        const description = document.getElementById('description');
-        const submitBtn = document.getElementById('submitBtn');
-
-        // Fonction pour afficher/masquer les erreurs
-        function showFieldError(field, errorId, isValid) {
-            const errorDiv = document.getElementById(errorId);
-            if (!isValid) {
-                field.classList.add('error');
-                if (errorDiv) errorDiv.classList.add('show');
-                return false;
-            } else {
-                field.classList.remove('error');
-                if (errorDiv) errorDiv.classList.remove('show');
-                return true;
-            }
-        }
-
-        // Validation en temps réel
-        if (categorie) {
-            categorie.addEventListener('change', function() {
-                const isValid = this.value !== '';
-                showFieldError(this, 'categorieError', isValid);
-            });
-        }
-
-        if (objet) {
-            objet.addEventListener('input', function() {
-                const isValid = this.value.trim().length >= 5;
-                showFieldError(this, 'objetError', isValid);
-            });
-        }
-
-        if (description) {
-            description.addEventListener('input', function() {
-                const isValid = this.value.trim().length >= 20;
-                showFieldError(this, 'descriptionError', isValid);
-            });
-        }
-
-        // Validation avant soumission
-        reclamationForm.addEventListener('submit', function(e) {
-            let isValid = true;
-
-            if (categorie && !categorie.value) {
-                showFieldError(categorie, 'categorieError', false);
-                isValid = false;
-            }
-
-            if (objet && objet.value.trim().length < 5) {
-                showFieldError(objet, 'objetError', false);
-                isValid = false;
-            }
-
-            if (description && description.value.trim().length < 20) {
-                showFieldError(description, 'descriptionError', false);
-                isValid = false;
-            }
-
-            if (!isValid) {
-                e.preventDefault();
-                window.showNotification('Veuillez corriger les erreurs dans le formulaire', 'error');
-                return false;
-            }
-
-            // Désactiver le bouton pour éviter double soumission
-            if (submitBtn) {
-                submitBtn.disabled = true;
-                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Envoi en cours...';
-            }
-        });
-    }
-
-    // ========== 6. VALIDATION DU FORMULAIRE DE RÉPONSE (BACKOFFICE) ==========
-    const reponseForm = document.getElementById('reponseForm');
-    if (reponseForm) {
-        const nomAgent = document.getElementById('nom_agent');
-        const contenu = document.getElementById('contenu');
-
-        function showError(field, errorId, show) {
-            const errorDiv = document.getElementById(errorId);
-            if (show) {
-                field.classList.add('error');
-                if (errorDiv) errorDiv.classList.add('show');
-            } else {
-                field.classList.remove('error');
-                if (errorDiv) errorDiv.classList.remove('show');
-            }
-        }
-
-        if (nomAgent) {
-            nomAgent.addEventListener('input', function() {
-                showError(this, 'nomAgentError', this.value.trim().length < 2);
-            });
-        }
-
-        if (contenu) {
-            contenu.addEventListener('input', function() {
-                showError(this, 'contenuError', this.value.trim().length < 10);
-            });
-        }
-
-        reponseForm.addEventListener('submit', function(e) {
-            let isValid = true;
-            if (nomAgent && nomAgent.value.trim().length < 2) {
-                showError(nomAgent, 'nomAgentError', true);
-                isValid = false;
-            }
-            if (contenu && contenu.value.trim().length < 10) {
-                showError(contenu, 'contenuError', true);
-                isValid = false;
-            }
-            if (!isValid) {
-                e.preventDefault();
-                if (window.showNotification) window.showNotification('Veuillez corriger les erreurs', 'error');
-            }
-        });
-    }
-
-    // ========== 7. CONFIRMATION DE SUPPRESSION ==========
-    const deleteButtons = document.querySelectorAll('.btn-danger, .delete-btn, a[onclick*="confirm"]');
-    deleteButtons.forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            if (!confirm('⚠️ Êtes-vous sûr de vouloir effectuer cette action ?\n\nCette opération est irréversible.')) {
-                e.preventDefault();
-                e.stopPropagation();
-                return false;
-            }
-        });
-    });
-
-    // ========== 8. FONCTIONS POUR MODALES (BACKOFFICE) ==========
-    window.showDetails = function(reclamation) {
-        const modal = document.getElementById('detailsModal');
-        const modalBody = document.getElementById('modalBody');
-        if (!modal || !modalBody) return;
-
-        let statusBadge = '';
-        switch(reclamation.statut) {
-            case 'soumise': statusBadge = 'badge-soumise'; break;
-            case 'en_cours': statusBadge = 'badge-en_cours'; break;
-            case 'traitee': statusBadge = 'badge-traitee'; break;
-            case 'rejetee': statusBadge = 'badge-rejetee'; break;
-            default: statusBadge = 'badge-soumise';
-        }
-        
-        const dateSoumission = new Date(reclamation.date_soumission).toLocaleDateString('fr-FR');
-        
-        modalBody.innerHTML = `
-            <div class="detail-row"><div class="detail-label">Référence</div><div class="detail-value">${escapeHtml(reclamation.reference)}</div></div>
-            <div class="detail-row"><div class="detail-label">Citoyen</div><div class="detail-value">${escapeHtml(reclamation.citoyen)}</div></div>
-            <div class="detail-row"><div class="detail-label">Service</div><div class="detail-value">${escapeHtml(reclamation.nom_service || 'Non spécifié')}</div></div>
-            <div class="detail-row"><div class="detail-label">Catégorie</div><div class="detail-value">${escapeHtml(reclamation.categorie)}</div></div>
-            <div class="detail-row"><div class="detail-label">Objet</div><div class="detail-value">${escapeHtml(reclamation.objet)}</div></div>
-            <div class="detail-row"><div class="detail-label">Description</div><div class="detail-value">${escapeHtml(reclamation.description)}</div></div>
-            <div class="detail-row"><div class="detail-label">Lieu</div><div class="detail-value">${escapeHtml(reclamation.lieu || 'Non spécifié')}</div></div>
-            <div class="detail-row"><div class="detail-label">Priorité</div><div class="detail-value">${escapeHtml(reclamation.priorite)}</div></div>
-            <div class="detail-row"><div class="detail-label">Statut</div><div class="detail-value"><span class="badge ${statusBadge}">${escapeHtml(reclamation.statut)}</span></div></div>
-            <div class="detail-row"><div class="detail-label">Date</div><div class="detail-value">${dateSoumission}</div></div>
-        `;
-        modal.style.display = 'flex';
-    };
-
-    window.closeModal = function() {
-        const modal = document.getElementById('detailsModal');
-        if (modal) modal.style.display = 'none';
-    };
-
-    // Fonction utilitaire pour échapper le HTML
-    function escapeHtml(text) {
-        if (!text) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
-    }
-});
-
-// Styles pour animations
-const style = document.createElement('style');
-style.textContent = `
-    @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-    @keyframes slideOut { from { transform: translateX(0); opacity: 1; } to { transform: translateX(100%); opacity: 0; } }
-    .form-control.error { border-color: #EF4444 !important; background-color: #FEE2E2 !important; }
-    .error-message { display: none; color: #DC2626; font-size: 12px; margin-top: 5px; }
-    .error-message.show { display: block; }
-`;
-document.head.appendChild(style);
+    window.addEventListener('load', initLoader);
+    initReveal();
+    initCounters();
+    initSlideshow();
+    initToasts();
+    initAdvancedStats();
+})();
