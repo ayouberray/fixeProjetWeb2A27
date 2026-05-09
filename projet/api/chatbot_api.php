@@ -23,14 +23,14 @@ if (empty($query)) {
 // CONFIGURATION DE L'IA (DeepSeek ou OpenAI)
 // ==========================================
 // Remplacer par votre vraie clé API DeepSeek ou OpenAI
-$api_key = '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'; 
+$api_key = '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'; 
 // URL pour Groq (Compatible OpenAI)
 $api_url = 'https://api.groq.com/openai/v1/chat/completions';
 $model = 'llama-3.3-70b-versatile'; // Nouveau modèle très performant et gratuit chez Groq
 
 // Si une image est fournie, on bascule obligatoirement sur le modèle Vision
 if ($image_b64) {
-    $model = 'meta-llama/llama-4-scout-17b-16e-instruct'; // Llama 4 Scout - Modèle Vision officiel Groq
+    $model = 'llama-3.2-11b-vision-preview'; // Modèle Vision officiel Groq (Llama 3.2)
 }
 
 // ==========================================
@@ -148,8 +148,23 @@ if ($api_key === 'VOTRE_CLE_API_ICI') {
             $ai_reply = "Désolé, je n'ai pas pu formuler de réponse (Erreur de structure API).";
         }
     } else {
-        // En cas d'erreur (ex: 400), on affiche le détail renvoyé par Groq pour comprendre
-        $ai_reply = "Désolé, une erreur est survenue (Code {$http_code}). Détails: " . htmlspecialchars($response_json);
+        // --- SMART FALLBACK MODE (When API Fails) ---
+        $ai_reply = "⚠️ <strong>Mode Municipalité Connectée :</strong> Je rencontre actuellement une saturation de mes serveurs IA, mais je peux toujours vous aider avec nos services locaux !<br><br>";
+        
+        $t = strtolower($query);
+        if (str_contains($t, 'bonjour') || str_contains($t, 'hello')) {
+            $ai_reply .= "Bonjour ! Je suis l'assistant de la mairie. Comment puis-je vous renseigner sur nos services ?";
+        } elseif (str_contains($t, 'rdv') || str_contains($t, 'rendez-vous')) {
+            $ai_reply .= "Pour gérer vos rendez-vous, rendez-vous dans votre <strong>Espace Citoyen</strong>. Vous pouvez modifier ou annuler vos demandes en attente directement depuis les cartes 3D.";
+        } elseif (str_contains($t, 'service')) {
+            $ai_reply .= "Nos services principaux sont l'État Civil, l'Urbanisme et l'Hygiène. Tous sont disponibles pour réservation en ligne.";
+        } else {
+            $ai_reply .= "Je suis InnoBot. Pour toute question urgente, vous pouvez nous appeler au <strong>+216 71 000 000</strong> ou visiter nos bureaux de 08h30 à 15h30.";
+        }
+
+        if ($id_found && isset($rdv) && $rdv) {
+            $ai_reply .= "<br><br>🔎 <strong>Infos sur votre RDV n°{$id_found} :</strong><br>Statut: <strong>{$rdv['statut']}</strong><br>Service: {$rdv['service_nom']}";
+        }
     }
 }
 

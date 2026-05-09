@@ -63,11 +63,11 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
     <title>Réserver un rendez-vous - InnoGov</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/projet/assets/css/style.css">
-    <script src="/projet/assets/js/script.js" defer></script>
+    <link rel="stylesheet" href="/Gestion_RDV/projet/assets/css/style.css?v=20260509_v9">
+    <script src="/Gestion_RDV/projet/assets/js/script.js" defer></script>
     <style>
         body { font-family: 'Inter', sans-serif; background: #f8fafc; }
-        .hero { display: none; }
+        
         
         .futuristic-container { max-width: 800px; margin: 60px auto; position: relative; z-index: 1; }
         
@@ -109,24 +109,49 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
 
 <div class="loader"><div class="spinner"></div></div>
 
-<nav class="navbar">
-    <div class="navbar-container">
-        <a href="/projet/index.php" style="text-decoration: none;">
-            <div class="logo">
-                <img src="/projet/assets/images/innogov-logo.png" alt="InnoGov" class="logo-img">
-                <div class="logo-text">
-                    <p class="logo-subtitle">Municipalité Tunisienne</p>
-                </div>
+<div class="navbar-wrapper">
+    <nav class="navbar floating-pill">
+        <a href="/Gestion_RDV/projet/index.php" class="nav-logo-link">
+            <div class="logo-hybrid">
+                <div class="logo-circle"><i class="fas fa-leaf"></i></div>
+                <span class="logo-text-serif">InnoGov<small class="logo-subtitle">Municipalite</small></span>
             </div>
         </a>
         <div class="nav-menu">
-            <a href="/projet/index.php" class="nav-link">Accueil</a>
-            <a href="/projet/VIEW/frontoffice/citoyen-mes-rdv.php" class="nav-link">Mes RDV</a>
-            <a href="/projet/VIEW/backoffice/admin-lister-rdv.php" class="nav-link">Admin</a>
-            <a href="/projet/VIEW/frontoffice/citoyen-reserver-rdv.php" class="btn btn-primary btn-sm">Prendre RDV</a>
+            <a href="/Gestion_RDV/projet/index.php" class="nav-link">Accueil</a>
+            <a href="/Gestion_RDV/projet/VIEW/frontoffice/citoyen-mes-rdv.php" class="nav-link">Mes RDV</a>
+            <a href="/Gestion_RDV/projet/VIEW/backoffice/admin-lister-rdv.php" class="nav-link">Admin</a>
+        </div>
+        <div class="nav-actions">
+            <button class="icon-btn theme-toggle" title="Mode Sombre/Clair"><i class="fas fa-sun" id="theme-icon"></i></button>
+            <div class="lang-switcher-pill">
+                <button class="lang-btn active" data-lang="fr">FR</button>
+                <button class="lang-btn" data-lang="ar">AR</button>
+            </div>
+            <a href="/Gestion_RDV/projet/VIEW/frontoffice/citoyen-reserver-rdv.php" class="nav-cta">
+                <i class="fas fa-calendar-plus"></i> Prendre RDV
+            </a>
+        </div>
+    </nav>
+</div>
+
+<!-- HERO SECTION -->
+<section class="hero">
+    <div class="hero-slideshow">
+        <img src="/Gestion_RDV/projet/assets/images/tunisia1.jpg" class="slide active" alt="Tunisie">
+        <img src="/Gestion_RDV/projet/assets/images/tunisia2.jpg" class="slide" alt="Tunisie">
+        <img src="/Gestion_RDV/projet/assets/images/tunisia3.jpg" class="slide" alt="Tunisie">
+        <img src="/Gestion_RDV/projet/assets/images/tunisia4.jpg" class="slide" alt="Tunisie">
+    </div>
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+        <h1>Services Municipaux Digitalisés</h1>
+        <p>Simplifiez vos démarches administratives en ligne</p>
+        <div class="hero-buttons">
+            <a href="/Gestion_RDV/projet/VIEW/frontoffice/citoyen-reserver-rdv.php" class="btn btn-primary">Prendre rendez-vous</a>
         </div>
     </div>
-</nav>
+</section>
 
 <div class="futuristic-container">
     <div class="page-header">
@@ -173,7 +198,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                 <button type="submit" class="btn-cyber"><i class="fas fa-paper-plane"></i> Confirmer la réservation</button>
             </div>
             <div style="text-align: center; margin-top: 20px;">
-                <a href="/projet/VIEW/frontoffice/citoyen-mes-rdv.php" style="color: #64748b; text-decoration: none; font-weight: 600; font-size: 14px;"><i class="fas fa-history"></i> Consulter mon historique</a>
+                <a href="/Gestion_RDV/projet/VIEW/frontoffice/citoyen-mes-rdv.php" style="color: #64748b; text-decoration: none; font-weight: 600; font-size: 14px;"><i class="fas fa-history"></i> Consulter mon historique</a>
             </div>
         </form>
     </div>

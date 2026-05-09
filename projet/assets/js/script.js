@@ -1,4 +1,4 @@
-// ========== SCRIPT DYNAMIQUE INNOGOV ==========
+// ========== SCRIPT DYNAMIQUE INNOGOV PREMIUM ==========
 
 // Loader
 window.addEventListener('load', function() {
@@ -11,21 +11,19 @@ window.addEventListener('load', function() {
     }
 });
 
-// Scroll Reveal
+// ========== PREMIUM 3D REVEAL ANIMATIONS ==========
 const revealElements = document.querySelectorAll('.reveal');
-
-function checkReveal() {
-    revealElements.forEach(element => {
-        const elementTop = element.getBoundingClientRect().top;
-        const windowHeight = window.innerHeight;
-        if(elementTop < windowHeight - 100) {
-            element.classList.add('active');
+const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.classList.add('active');
+            // Unobserve after showing to keep it efficient
+            revealObserver.unobserve(entry.target);
         }
     });
-}
+}, { threshold: 0.15, rootMargin: '0px 0px -50px 0px' });
 
-window.addEventListener('scroll', checkReveal);
-window.addEventListener('load', checkReveal);
+revealElements.forEach(el => revealObserver.observe(el));
 
 // ========== COMPTEURS ANIMÉS ==========
 function animateCounter(element, target, duration = 2000) {
@@ -62,7 +60,7 @@ const statsObserver = new IntersectionObserver((entries) => {
 const statsGrid = document.querySelector('.stats-grid');
 if(statsGrid) statsObserver.observe(statsGrid);
 
-// ========== SLIDESHOW AUTOMATIQUE ==========
+// ========== HERO SLIDESHOW & PARALLAX ==========
 let currentSlide = 0;
 const slides = document.querySelectorAll('.hero-slideshow .slide');
 
@@ -71,425 +69,271 @@ if(slides.length > 0){
         slides[currentSlide].classList.remove('active');
         currentSlide = (currentSlide + 1) % slides.length;
         slides[currentSlide].classList.add('active');
-    }, 5000);
+    }, 6000);
+
+    // Parallax on scroll
+    window.addEventListener('scroll', () => {
+        const scrolled = window.scrollY;
+        const heroSlideshow = document.querySelector('.hero-slideshow');
+        if (heroSlideshow) {
+            heroSlideshow.style.transform = `translateY(${scrolled * 0.4}px)`;
+        }
+    });
 }
 
-// ========== TRADUCTION BIDIRECTIONNELLE (qui marche) ==========
+// ========== GLOBAL PREMIUM MODALS ==========
+function openPremiumModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden'; // Stop scroll
+    }
+}
 
-// Stockage des textes originaux en français
+function closePremiumModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = ''; // Resume scroll
+    }
+}
+
+// Close modals when clicking outside the box
+window.addEventListener('click', (e) => {
+    if (e.target.classList.contains('premium-modal')) {
+        e.target.classList.remove('active');
+        document.body.style.overflow = '';
+    }
+});
+
+// ========== TRADUCTION SYSTEM ==========
 let originalTexts = new Map();
-
-// Dictionnaire complet des traductions
 const translations = {
     fr: {
-        // Navigation
-        'Accueil': 'Accueil',
-        'Mes RDV': 'Mes RDV',
-        'Admin': 'Admin',
-        'Prendre RDV': 'Prendre RDV',
-        'Espace citoyen': 'Espace citoyen',
-        'Retour': 'Retour',
-        
-        // Hero
-        'Services Municipaux Digitalisés': 'Services Municipaux Digitalisés',
-        'Simplifiez vos démarches administratives en ligne': 'Simplifiez vos démarches administratives en ligne',
-        'Prendre rendez-vous': 'Prendre rendez-vous',
-        'En savoir plus': 'En savoir plus',
-        
-        // Titres
-        'Mes rendez-vous': 'Mes rendez-vous',
-        'Nouveau RDV': 'Nouveau RDV',
-        'Réserver un rendez-vous': 'Réserver un rendez-vous',
-        'Modifier rendez-vous': 'Modifier rendez-vous',
-        'Administration': 'Administration',
-        'Tous les rendez-vous': 'Tous les rendez-vous',
-        'Statistiques': 'Statistiques',
-        'Gestion des services municipaux': 'Gestion des services municipaux',
-        'Services municipaux': 'Services municipaux',
-        'Ajouter un service': 'Ajouter un service',
-        'Modifier un service': 'Modifier un service',
-        
-        // Formulaires
-        'Bienvenue': 'Bienvenue',
-        'Service': 'Service',
-        'Date et heure': 'Date et heure',
-        'Motif': 'Motif',
-        'Choisir un service': 'Choisir un service',
-        'Description': 'Description',
-        'Durée moyenne (minutes)': 'Durée moyenne (minutes)',
-        'Statut': 'Statut',
-        'Actif': 'Actif',
-        'Inactif': 'Inactif',
-        'Décrivez l\'objet de votre rendez-vous...': 'Décrivez l\'objet de votre rendez-vous...',
-        
-        // Boutons
-        'Réserver': 'Réserver',
-        'Annuler': 'Annuler',
-        'Modifier': 'Modifier',
-        'Supprimer': 'Supprimer',
-        'Enregistrer': 'Enregistrer',
-        'Ajouter un RDV': 'Ajouter un RDV',
-        'Voir stats': 'Voir stats',
-        'Nouveau service': 'Nouveau service',
-        'Créer': 'Créer',
-        
-        // Tableau
-        'ID': 'ID',
-        'Citoyen': 'Citoyen',
-        'Agent': 'Agent',
-        'Actions': 'Actions',
-        'Non affecté': 'Non affecté',
-        'Aucun rendez-vous trouvé': 'Aucun rendez-vous trouvé',
-        'Aucun service trouvé': 'Aucun service trouvé',
-        'Nom du service': 'Nom du service',
-        'Durée': 'Durée',
-        
-        // Statuts
-        'en_attente': 'En attente',
-        'confirme': 'Confirmé',
-        'annule': 'Annulé',
-        'termine': 'Terminé',
-        
-        // Admin stats
-        'Gérez tous les rendez-vous de la municipalité': 'Gérez tous les rendez-vous de la municipalité',
-        'Total RDV': 'Total RDV',
-        'En attente': 'En attente',
-        'Confirmés': 'Confirmés',
-        'Annulés': 'Annulés',
-        'Traités': 'Traités',
-        'Par service': 'Par service',
-        'Par agent': 'Par agent',
-        'Chiffres Clés': 'Chiffres Clés',
-        'Citoyens': 'Citoyens',
-        'Services': 'Services',
-        'RDV traités': 'RDV traités',
-        'Années d\'expérience': 'Années d\'expérience',
-        'Nos Services': 'Nos Services',
-        'Actualités': 'Actualités',
-        'Lire la suite': 'Lire la suite',
-        
-        // Footer
-        'Contact': 'Contact',
-        'Horaires': 'Horaires',
-        'Lundi - Vendredi: 8h30 - 15h30': 'Lundi - Vendredi: 8h30 - 15h30',
-        'Tous droits réservés': 'Tous droits réservés',
-        'InnoGov': 'InnoGov',
-        'Municipalité Tunisienne': 'Municipalité Tunisienne',
-        'Plateforme de services municipaux': 'Plateforme de services municipaux',
-        
-        // Messages
-        'Supprimer ce rendez-vous ?': 'Supprimer ce rendez-vous ?',
-        'Annuler ce rendez-vous ?': 'Annuler ce rendez-vous ?',
-        'Supprimer ce service ?': 'Supprimer ce service ?'
+        'Accueil': 'Accueil', 'Mes RDV': 'Mes RDV', 'Admin': 'Admin', 'Prendre RDV': 'Prendre RDV',
+        'Espace citoyen': 'Espace citoyen', 'Retour': 'Retour', 'Prendre rendez-vous': 'Prendre rendez-vous',
+        'En savoir plus': 'En savoir plus', 'Réserver': 'Réserver', 'Annuler': 'Annuler',
+        'Modifier': 'Modifier', 'Supprimer': 'Supprimer', 'Enregistrer': 'Enregistrer',
+        'en_attente': 'En attente', 'confirme': 'Confirmé', 'annule': 'Annulé', 'termine': 'Terminé'
     },
     ar: {
-        // Navigation
-        'Accueil': 'الرئيسية',
-        'Mes RDV': 'مواعيدي',
-        'Admin': 'المشرف',
-        'Prendre RDV': 'حجز موعد',
-        'Espace citoyen': 'مساحة المواطن',
-        'Retour': 'رجوع',
-        
-        // Hero
-        'Services Municipaux Digitalisés': 'الخدمات البلدية الرقمية',
-        'Simplifiez vos démarches administratives en ligne': 'تبسيط الإجراءات الإدارية عبر الإنترنت',
-        'Prendre rendez-vous': 'حجز موعد',
-        'En savoir plus': 'اقرأ المزيد',
-        
-        // Titres
-        'Mes rendez-vous': 'مواعيدي',
-        'Nouveau RDV': 'موعد جديد',
-        'Réserver un rendez-vous': 'حجز موعد',
-        'Modifier rendez-vous': 'تعديل موعد',
-        'Administration': 'الإدارة',
-        'Tous les rendez-vous': 'جميع المواعيد',
-        'Statistiques': 'إحصائيات',
-        'Gestion des services municipaux': 'إدارة الخدمات البلدية',
-        'Services municipaux': 'الخدمات البلدية',
-        'Ajouter un service': 'إضافة خدمة',
-        'Modifier un service': 'تعديل خدمة',
-        
-        // Formulaires
-        'Bienvenue': 'مرحباً',
-        'Service': 'الخدمة',
-        'Date et heure': 'التاريخ والوقت',
-        'Motif': 'السبب',
-        'Choisir un service': 'اختر خدمة',
-        'Description': 'الوصف',
-        'Durée moyenne (minutes)': 'المدة المتوسطة (دقائق)',
-        'Statut': 'الحالة',
-        'Actif': 'نشط',
-        'Inactif': 'غير نشط',
-        'Décrivez l\'objet de votre rendez-vous...': 'صف سبب زيارتك...',
-        
-        // Boutons
-        'Réserver': 'حجز',
-        'Annuler': 'إلغاء',
-        'Modifier': 'تعديل',
-        'Supprimer': 'حذف',
-        'Enregistrer': 'حفظ',
-        'Ajouter un RDV': 'إضافة موعد',
-        'Voir stats': 'عرض الإحصائيات',
-        'Nouveau service': 'خدمة جديدة',
-        'Créer': 'إنشاء',
-        
-        // Tableau
-        'ID': 'الرقم',
-        'Citoyen': 'المواطن',
-        'Agent': 'الموظف',
-        'Actions': 'إجراءات',
-        'Non affecté': 'غير معين',
-        'Aucun rendez-vous trouvé': 'لا توجد مواعيد',
-        'Aucun service trouvé': 'لا توجد خدمات',
-        'Nom du service': 'اسم الخدمة',
-        'Durée': 'المدة',
-        
-        // Statuts
-        'en_attente': 'قيد الانتظار',
-        'confirme': 'مؤكد',
-        'annule': 'ملغي',
-        'termine': 'منتهي',
-        
-        // Admin stats
-        'Gérez tous les rendez-vous de la municipalité': 'إدارة جميع مواعيد البلدية',
-        'Total RDV': 'إجمالي المواعيد',
-        'En attente': 'قيد الانتظار',
-        'Confirmés': 'مؤكدة',
-        'Annulés': 'ملغاة',
-        'Traités': 'منتهية',
-        'Par service': 'حسب الخدمة',
-        'Par agent': 'حسب الموظف',
-        'Chiffres Clés': 'إحصائيات رئيسية',
-        'Citoyens': 'مواطن',
-        'Services': 'خدمة',
-        'RDV traités': 'موعد تمت معالجته',
-        'Années d\'expérience': 'سنة خبرة',
-        'Nos Services': 'خدماتنا',
-        'Actualités': 'آخر الأخبار',
-        'Lire la suite': 'اقرأ المزيد',
-        
-        // Footer
-        'Contact': 'اتصل بنا',
-        'Horaires': 'ساعات العمل',
-        'Lundi - Vendredi: 8h30 - 15h30': 'الإثنين - الجمعة: 8:30 - 15:30',
-        'Tous droits réservés': 'جميع الحقوق محفوظة',
-        'InnoGov': 'إنوغوف',
-        'Municipalité Tunisienne': 'البلدية التونسية',
-        'Plateforme de services municipaux': 'منصة الخدمات البلدية',
-        
-        // Messages
-        'Supprimer ce rendez-vous ?': 'هل تريد حذف هذا الموعد؟',
-        'Annuler ce rendez-vous ?': 'هل تريد إلغاء هذا الموعد؟',
-        'Supprimer ce service ?': 'هل تريد حذف هذه الخدمة؟'
+        'Accueil': 'الرئيسية', 'Mes RDV': 'مواعيدي', 'Admin': 'المشرف', 'Prendre RDV': 'حجز موعد',
+        'Espace citoyen': 'مساحة المواطن', 'Retour': 'رجوع', 'Prendre rendez-vous': 'حجز موعد',
+        'En savoir plus': 'اقرأ المزيد', 'Réserver': 'حجز', 'Annuler': 'إلغاء',
+        'Modifier': 'تعديل', 'Supprimer': 'حذف', 'Enregistrer': 'حفظ',
+        'en_attente': 'قيد الانتظار', 'confirme': 'مؤكد', 'annule': 'ملغي', 'termine': 'منتهي'
     }
 };
 
-let currentLang = 'fr';
-
-// Sauvegarder les textes originaux (une seule fois au chargement)
 function saveOriginalTexts() {
-    // Éléments à sauvegarder
-    const elementsToSave = document.querySelectorAll('h1, h2, h3, h4, h5, h6, p, a, button, span, div, label, th, td, li, option, .card-title, .nav-link, .btn, .hero-content h1, .hero-content p, .form-label, .card-header h2, .footer-section h4, .footer-section p');
-    
-    elementsToSave.forEach(element => {
-        // Sauvegarder uniquement si l'élément a du texte et pas déjà sauvegardé
-        if(element.children.length === 0 || (element.children.length === 1 && element.children[0].tagName === 'I')) {
-            const text = element.textContent.trim();
-            if(text && !originalTexts.has(element)) {
-                originalTexts.set(element, text);
-            }
-        }
-    });
-    
-    // Sauvegarder les placeholders
-    document.querySelectorAll('input, textarea, select').forEach(element => {
-        const placeholder = element.getAttribute('placeholder');
-        if(placeholder && !originalTexts.has(element)) {
-            originalTexts.set(element, placeholder);
+    const elements = document.querySelectorAll('h1, h2, h3, h4, h5, p, a, button, span, label, th, td');
+    elements.forEach(el => {
+        if(el.children.length === 0 || (el.children.length === 1 && el.children[0].tagName === 'I')) {
+            const text = el.textContent.trim();
+            if(text && !originalTexts.has(el)) originalTexts.set(el, text);
         }
     });
 }
 
-// Fonction pour traduire la page
 function translatePage(lang) {
-    currentLang = lang;
-    
-    // Traduire les textes des éléments
-    originalTexts.forEach((originalText, element) => {
-        // Vérifier si c'est un placeholder
-        if(element.tagName === 'INPUT' || element.tagName === 'TEXTAREA' || element.tagName === 'SELECT') {
-            if(translations[lang][originalText]) {
-                element.setAttribute('placeholder', translations[lang][originalText]);
-            } else if(lang === 'fr') {
-                element.setAttribute('placeholder', originalText);
-            }
-        } else {
-            // Traduire le texte normal
-            if(translations[lang][originalText]) {
-                // Sauvegarder l'icône si elle existe
-                const icon = element.querySelector('i');
-                if(icon) {
-                    const iconHTML = icon.outerHTML;
-                    element.innerHTML = iconHTML + ' ' + translations[lang][originalText];
-                } else {
-                    element.textContent = translations[lang][originalText];
-                }
-            } else if(lang === 'fr') {
-                // Revenir au texte original
-                const icon = element.querySelector('i');
-                if(icon) {
-                    const iconHTML = icon.outerHTML;
-                    element.innerHTML = iconHTML + ' ' + originalText;
-                } else {
-                    element.textContent = originalText;
-                }
+    originalTexts.forEach((text, el) => {
+        if(translations[lang] && translations[lang][text]) {
+            const icon = el.querySelector('i');
+            if(icon) {
+                el.innerHTML = icon.outerHTML + ' ' + translations[lang][text];
+            } else {
+                el.textContent = translations[lang][text];
             }
         }
     });
-    
-    // Traduire les options des selects
-    document.querySelectorAll('option').forEach(option => {
-        const originalOptionText = originalTexts.get(option);
-        if(originalOptionText && translations[lang][originalOptionText]) {
-            option.textContent = translations[lang][originalOptionText];
-        } else if(lang === 'fr' && originalOptionText) {
-            option.textContent = originalOptionText;
-        }
-    });
-    
-    // Changer la direction RTL pour l'arabe
-    if(lang === 'ar') {
-        document.documentElement.setAttribute('dir', 'rtl');
-        document.documentElement.setAttribute('lang', 'ar');
-        document.body.style.direction = 'rtl';
-        document.body.style.textAlign = 'right';
-    } else {
-        document.documentElement.setAttribute('dir', 'ltr');
-        document.documentElement.setAttribute('lang', 'fr');
-        document.body.style.direction = 'ltr';
-        document.body.style.textAlign = 'left';
-    }
-    
-    // Mettre à jour l'état actif des boutons
-    document.querySelectorAll('.lang-btn').forEach(btn => {
-        if(btn.getAttribute('data-lang') === lang) {
-            btn.classList.add('active');
-        } else {
-            btn.classList.remove('active');
-        }
-    });
-    
-    // Sauvegarder la langue
+    document.documentElement.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
+    document.documentElement.setAttribute('lang', lang);
     localStorage.setItem('preferred_language', lang);
-}
-
-// Charger la langue sauvegardée
-function loadSavedLanguage() {
-    const savedLang = localStorage.getItem('preferred_language');
-    if(savedLang && (savedLang === 'fr' || savedLang === 'ar')) {
-        translatePage(savedLang);
-    } else {
-        translatePage('fr');
-    }
-}
-
-// ========== NOTIFICATION TOAST ==========
-function showToast(message, type = 'success') {
-    let translatedMessage = message;
-    if(currentLang === 'ar' && translations.ar[message]) {
-        translatedMessage = translations.ar[message];
-    }
     
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    const icon = type === 'success' ? 'fa-check-circle' : (type === 'error' ? 'fa-exclamation-circle' : 'fa-info-circle');
-    toast.innerHTML = `<i class="fas ${icon}"></i><span>${translatedMessage}</span>`;
-    toast.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        right: 20px;
-        background: white;
-        padding: 14px 24px;
-        border-radius: 12px;
-        box-shadow: 0 8px 24px rgba(0,0,0,0.15);
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        z-index: 9999;
-        animation: slideInRight 0.3s ease;
-        border-left: 4px solid ${type === 'success' ? '#00A86B' : (type === 'error' ? '#E31E24' : '#FFB800')};
-        font-family: 'Inter', sans-serif;
-    `;
-    document.body.appendChild(toast);
-    setTimeout(() => {
-        toast.style.animation = 'slideOutRight 0.3s ease';
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
+    document.querySelectorAll('.lang-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.getAttribute('data-lang') === lang);
+    });
 }
 
-// Ajouter les animations CSS
-const toastStyle = document.createElement('style');
-toastStyle.textContent = `
-    @keyframes slideInRight {
-        from { transform: translateX(100%); opacity: 0; }
-        to { transform: translateX(0); opacity: 1; }
-    }
-    @keyframes slideOutRight {
-        from { transform: translateX(0); opacity: 1; }
-        to { transform: translateX(100%); opacity: 0; }
-    }
-`;
-document.head.appendChild(toastStyle);
-
-// ========== AUTO-SCROLL APRÈS SLIDESHOW ==========
+// ========== AUTO-SCROLL AFTER SLIDESHOW ==========
 function autoScrollAfterSlideshow() {
-    const pathname = window.location.pathname;
-    const fileName = pathname.split('/').pop();
-    const noScrollPages = ['index.php', 'index', ''];
-    const isHomePage = noScrollPages.includes(fileName) || 
-                       pathname === '/projet/' || 
-                       pathname === '/projet/index.php' ||
-                       pathname === '/';
-    
-    if(isHomePage) {
-        return;
-    }
-    
     setTimeout(() => {
-        const heroSection = document.querySelector('.hero');
-        if(heroSection) {
-            const heroHeight = heroSection.offsetHeight;
+        const hero = document.querySelector('.hero');
+        if (hero) {
             window.scrollTo({
-                top: heroHeight,
+                top: hero.offsetHeight - 80,
                 behavior: 'smooth'
             });
-        } else {
-            const mainContent = document.querySelector('.container, .card, main');
-            if(mainContent) {
-                mainContent.scrollIntoView({ behavior: 'smooth' });
-            }
         }
-    }, 1300);
+    }, 2500);
+}
+
+// ========== DARK MODE ==========
+function initDarkMode() {
+    const btn = document.querySelector('.theme-toggle');
+    if(!btn) return;
+    const icon = btn.querySelector('i');
+    const saved = localStorage.getItem('theme') || 'light';
+    
+    const apply = (theme) => {
+        if(theme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            if(icon) icon.className = 'fas fa-moon';
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+            if(icon) icon.className = 'fas fa-sun';
+        }
+    };
+    apply(saved);
+    btn.addEventListener('click', () => {
+        const now = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+        apply(now);
+        localStorage.setItem('theme', now);
+    });
+}
+
+// ========== ADVANCED 3D TILT ==========
+function init3DTilt() {
+    const cards = document.querySelectorAll('.stat-card, .service-card, .news-card, .card, .rdv-card');
+    cards.forEach(card => {
+        card.addEventListener('mousemove', e => {
+            const rect = card.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const centerX = rect.width / 2;
+            const centerY = rect.height / 2;
+            const rotateX = ((y - centerY) / centerY) * -12;
+            const rotateY = ((x - centerX) / centerX) * 12;
+            
+            card.style.transform = `perspective(1000px) translateY(-10px) rotateX(${rotateX}deg) rotateY(${rotateY}deg)`;
+            card.style.boxShadow = `${-rotateY * 0.5}px ${rotateX * 0.5}px 40px rgba(0,0,0,0.2)`;
+        });
+        
+        card.addEventListener('mouseleave', () => {
+            card.style.transform = `perspective(1000px) translateY(0) rotateX(0) rotateY(0)`;
+            card.style.boxShadow = '';
+        });
+    });
 }
 
 // ========== INITIALISATION ==========
 document.addEventListener('DOMContentLoaded', function() {
-    // Sauvegarder tous les textes originaux
     saveOriginalTexts();
+    const savedLang = localStorage.getItem('preferred_language') || 'fr';
+    translatePage(savedLang);
     
-    // Charger la langue sauvegardée
-    loadSavedLanguage();
-    
-    // Initialiser les boutons de langue
     document.querySelectorAll('.lang-btn').forEach(btn => {
-        btn.addEventListener('click', function(e) {
+        btn.addEventListener('click', (e) => {
             e.preventDefault();
-            const lang = this.getAttribute('data-lang');
-            translatePage(lang);
+            translatePage(btn.getAttribute('data-lang'));
         });
     });
     
-    // Auto-scroll
     autoScrollAfterSlideshow();
+    initDarkMode();
+    init3DTilt();
 });
+
+// ========== NAVBAR SCROLL EFFECT ==========
+(function() {
+    const navbar = document.querySelector('.navbar.floating-pill');
+    if (!navbar) return;
+    const handle = () => {
+        if (window.scrollY > 60) navbar.classList.add('scrolled');
+        else navbar.classList.remove('scrolled');
+    };
+    handle();
+    window.addEventListener('scroll', handle, { passive: true });
+})();
+
+// ========== ULTRA PREMIUM 3D CHATBOT LOGIC ==========
+(function() {
+    const toggle = document.getElementById('chatbot-toggle');
+    const container = document.getElementById('chatbot-container');
+    const close = document.getElementById('chatbot-close');
+    const input = document.getElementById('chatbot-input');
+    const sendBtn = document.getElementById('chatbot-send-btn');
+    const messages = document.getElementById('chatbot-messages');
+    const uploadBtn = document.getElementById('chatbot-upload-btn');
+    const fileInput = document.getElementById('chatbot-file-input');
+
+    if (!toggle || !container) return;
+
+    // Toggle Chatbot
+    toggle.addEventListener('click', () => {
+        container.classList.toggle('active');
+        if (container.classList.contains('active')) {
+            if (messages.children.length === 0) {
+                addMessage('Bonjour ! Je suis InnoBot, votre assistant municipal intelligent. Comment puis-je vous aider aujourd\'hui ?', 'bot');
+            }
+            input.focus();
+        }
+    });
+
+    if (close) close.addEventListener('click', () => container.classList.remove('active'));
+
+    // Handle Messages
+    function addMessage(text, side) {
+        const msg = document.createElement('div');
+        msg.className = `message ${side}`;
+        msg.innerHTML = text;
+        messages.appendChild(msg);
+        messages.scrollTop = messages.scrollHeight;
+        return msg;
+    }
+
+    let currentBase64Image = null;
+
+    async function handleSend() {
+        const text = input.value.trim();
+        if (!text && !currentBase64Image) return;
+
+        addMessage(text || "<em>[Analyse d'image...]</em>", 'user');
+        input.value = '';
+
+        // Add "Typing" indicator
+        const typingMsg = addMessage('<span class="typing-dots"><span></span><span></span><span></span></span>', 'bot');
+        
+        try {
+            const response = await fetch('/Gestion_RDV/projet/api/chatbot_api.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    q: text,
+                    image: currentBase64Image
+                })
+            });
+
+            const data = await response.json();
+            typingMsg.innerHTML = data.text;
+            currentBase64Image = null; // Reset image after send
+        } catch (error) {
+            typingMsg.innerHTML = "Désolé, je rencontre une difficulté technique pour me connecter à mon cerveau IA. Veuillez réessayer plus tard.";
+            console.error("Chatbot Error:", error);
+        }
+        
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    if (sendBtn) sendBtn.addEventListener('click', handleSend);
+    if (input) input.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') handleSend();
+    });
+
+    // File Upload Simulation & Base64 conversion
+    if (uploadBtn && fileInput) {
+        uploadBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', () => {
+            const file = fileInput.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    currentBase64Image = e.target.result;
+                    addMessage(`<i class="fas fa-image"></i> Image prête pour analyse : <strong>${file.name}</strong>`, 'user');
+                    addMessage("Cliquez sur envoyer pour que j'analyse cette image.", 'bot');
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+    }
+})();

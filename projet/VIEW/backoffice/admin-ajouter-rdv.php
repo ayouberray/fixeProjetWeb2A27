@@ -39,10 +39,10 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
     <title>Admin - Ajouter rendez-vous</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/projet/assets/css/style.css">
+    <link rel="stylesheet" href="/Gestion_RDV/projet/assets/css/style.css??v=20260509_v9">
     <style>
-        body { font-family: 'Inter', sans-serif; background: #f8fafc; }
-        .hero { display: none; }
+        body {  font-family: 'Inter', sans-serif; background: var(--bg-page); }
+        
         
         .futuristic-container { max-width: 800px; margin: 40px auto; position: relative; z-index: 1; }
         
@@ -78,21 +78,44 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
 </head>
 <body>
 
-<nav class="navbar">
-    <div class="navbar-container">
-        <a href="/projet/index.php" style="text-decoration: none;">
-            <div class="logo">
-                <img src="/projet/assets/images/innogov-logo.png" alt="InnoGov" class="logo-img">
-                <div class="logo-text">
-                    <p class="logo-subtitle">Administration</p>
-                </div>
+<div class="navbar-wrapper">
+    <nav class="navbar floating-pill">
+        <a href="/Gestion_RDV/projet/index.php" class="nav-logo-link">
+            <div class="logo-hybrid">
+                <div class="logo-circle"><i class="fas fa-leaf"></i></div>
+                <span class="logo-text-serif">InnoGov<small class="logo-subtitle">Municipalite</small></span>
             </div>
         </a>
         <div class="nav-menu">
-            <a href="/projet/VIEW/backoffice/admin-lister-rdv.php" class="nav-link">← Retour</a>
+            <a href="/Gestion_RDV/projet/VIEW/backoffice/admin-lister-rdv.php" class="nav-link">← Retour</a>
         </div>
+        <div class="nav-actions">
+            <button class="icon-btn theme-toggle" title="Mode Sombre/Clair"><i class="fas fa-sun" id="theme-icon"></i></button>
+            <div class="lang-switcher-pill">
+                <button class="lang-btn active" data-lang="fr">FR</button>
+                <button class="lang-btn" data-lang="ar">AR</button>
+            </div>
+            <a href="/Gestion_RDV/projet/VIEW/backoffice/admin-lister-rdv.php" class="nav-cta">
+                <i class="fas fa-list"></i> Voir les RDV
+            </a>
+        </div>
+    </nav>
+</div>
+
+<!-- HERO SECTION -->
+<section class="hero">
+    <div class="hero-slideshow">
+        <img src="/Gestion_RDV/projet/assets/images/tunisia1.jpg" class="slide active" alt="Tunisie">
+        <img src="/Gestion_RDV/projet/assets/images/tunisia2.jpg" class="slide" alt="Tunisie">
+        <img src="/Gestion_RDV/projet/assets/images/tunisia3.jpg" class="slide" alt="Tunisie">
+        <img src="/Gestion_RDV/projet/assets/images/tunisia4.jpg" class="slide" alt="Tunisie">
     </div>
-</nav>
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+        <h1>Administration Municipale</h1>
+        <p>Gérez les services et les rendez-vous en toute simplicité</p>
+    </div>
+</section>
 
 <div class="futuristic-container">
     <div class="page-header">
@@ -140,7 +163,7 @@ if($_SERVER["REQUEST_METHOD"] == "POST"){
                 <button type="submit" class="btn-cyber"><i class="fas fa-save"></i> Enregistrer le RDV</button>
             </div>
             <div style="text-align: center; margin-top: 20px;">
-                <a href="/projet/VIEW/backoffice/admin-lister-rdv.php" style="color: #64748b; text-decoration: none; font-weight: 600;"><i class="fas fa-times"></i> Annuler et retourner</a>
+                <a href="/Gestion_RDV/projet/VIEW/backoffice/admin-lister-rdv.php" style="color: #64748b; text-decoration: none; font-weight: 600;"><i class="fas fa-times"></i> Annuler et retourner</a>
             </div>
         </form>
     </div>

@@ -27,8 +27,8 @@ $rdvs_email = $db->query("
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Rappels Email - InnoGov Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="/projet/assets/css/style.css">
-    <script src="/projet/assets/js/script.js" defer></script>
+    <link rel="stylesheet" href="/Gestion_RDV/projet/assets/css/style.css??v=20260509_v9">
+    <script src="/Gestion_RDV/projet/assets/js/script.js" defer></script>
     <style>
         .reminder-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
         .reminder-stat-card { background: white; border-radius: 12px; padding: 25px; text-align: center; box-shadow: 0 2px 10px rgba(0,0,0,0.08); border-top: 4px solid; }
@@ -55,29 +55,54 @@ $rdvs_email = $db->query("
 <body>
 <div class="loader"><div class="spinner"></div></div>
 
-<nav class="navbar">
-    <div class="navbar-container">
-        <a href="/projet/index.php" style="text-decoration: none;">
-            <div class="logo">
-                <img src="/projet/assets/images/innogov-logo.png" alt="InnoGov" class="logo-img">
-                <div class="logo-text"><p class="logo-subtitle">Municipalité Tunisienne</p></div>
+<div class="navbar-wrapper">
+    <nav class="navbar floating-pill">
+        <a href="/Gestion_RDV/projet/index.php" class="nav-logo-link">
+            <div class="logo-hybrid">
+                <div class="logo-circle"><i class="fas fa-leaf"></i></div>
+                <span class="logo-text-serif">InnoGov<small class="logo-subtitle">Municipalite</small></span>
             </div>
         </a>
         <div class="nav-menu">
-            <a href="/projet/index.php" class="nav-link">Accueil</a>
-            <a href="/projet/VIEW/backoffice/admin-lister-rdv.php" class="nav-link">Admin RDV</a>
-            <a href="/projet/VIEW/backoffice/admin-stats-rdv.php" class="nav-link">Statistiques</a>
-            <a href="/projet/VIEW/backoffice/admin-rappels.php" class="nav-link active">Rappels Email</a>
+            <a href="/Gestion_RDV/projet/index.php" class="nav-link">Accueil</a>
+            <a href="/Gestion_RDV/projet/VIEW/backoffice/admin-lister-rdv.php" class="nav-link">Admin RDV</a>
+            <a href="/Gestion_RDV/projet/VIEW/backoffice/admin-stats-rdv.php" class="nav-link">Statistiques</a>
+            <a href="/Gestion_RDV/projet/VIEW/backoffice/admin-rappels.php" class="nav-link active">Rappels Email</a>
         </div>
+        <div class="nav-actions">
+            <button class="icon-btn theme-toggle" title="Mode Sombre/Clair"><i class="fas fa-sun" id="theme-icon"></i></button>
+            <div class="lang-switcher-pill">
+                <button class="lang-btn active" data-lang="fr">FR</button>
+                <button class="lang-btn" data-lang="ar">AR</button>
+            </div>
+            <a href="#" class="nav-cta">
+                <i class="fas fa-envelope"></i> Envoyer rappels
+            </a>
+        </div>
+    </nav>
+</div>
+
+<!-- HERO SECTION -->
+<section class="hero">
+    <div class="hero-slideshow">
+        <img src="/Gestion_RDV/projet/assets/images/tunisia1.jpg" class="slide active" alt="Tunisie">
+        <img src="/Gestion_RDV/projet/assets/images/tunisia2.jpg" class="slide" alt="Tunisie">
+        <img src="/Gestion_RDV/projet/assets/images/tunisia3.jpg" class="slide" alt="Tunisie">
+        <img src="/Gestion_RDV/projet/assets/images/tunisia4.jpg" class="slide" alt="Tunisie">
     </div>
-</nav>
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+        <h1>Administration Municipale</h1>
+        <p>Gérez les services et les rendez-vous en toute simplicité</p>
+    </div>
+</section>
 
 <div class="container" style="padding-top: 40px;">
 
     <div class="card reveal">
         <div class="card-header" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:15px;">
             <h2 class="card-title"><i class="fas fa-bell"></i> Gestion des Rappels Email</h2>
-            <a href="/projet/VIEW/backoffice/admin-lister-rdv.php" class="btn btn-outline btn-sm">
+            <a href="/Gestion_RDV/projet/VIEW/backoffice/admin-lister-rdv.php" class="btn btn-outline btn-sm">
                 <i class="fas fa-arrow-left"></i> Retour Admin
             </a>
         </div>
@@ -192,7 +217,7 @@ function sendReminders() {
     text.textContent = 'Envoi en cours...';
     box.style.display = 'none';
 
-    fetch('/projet/api/send_reminders.php')
+    fetch('/Gestion_RDV/projet/api/send_reminders.php')
         .then(res => res.json())
         .then(data => {
             btn.disabled = false;

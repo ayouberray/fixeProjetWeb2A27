@@ -29,11 +29,11 @@ $parAgent = $db->query("SELECT agent_nom, COUNT(*) as total FROM rendez_vous WHE
     <title>Admin - Statistiques</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/projet/assets/css/style.css">
-    <script src="/projet/assets/js/script.js" defer></script>
+    <link rel="stylesheet" href="/Gestion_RDV/projet/assets/css/style.css?v=20260509_v9">
+    <script src="/Gestion_RDV/projet/assets/js/script.js" defer></script>
     <style>
-        body { font-family: 'Inter', sans-serif; background: #f8fafc; }
-        .hero { display: none; }
+        body {  font-family: 'Inter', sans-serif; background: var(--bg-page); }
+        
         
         .futuristic-container { max-width: 1200px; margin: 40px auto; position: relative; z-index: 1; padding: 0 20px; }
         .page-header { text-align: center; margin-bottom: 40px; }
@@ -60,7 +60,7 @@ $parAgent = $db->query("SELECT agent_nom, COUNT(*) as total FROM rendez_vous WHE
         .table th { background: var(--primary); color: white; font-weight: 600; text-transform: uppercase; font-size: 13px; padding: 12px 15px; text-align: left; }
         .table td { padding: 15px; border-bottom: 1px solid #e2e8f0; color: #334155; }
         .table tr:last-child td { border-bottom: none; }
-        .table tr:hover td { background: #f8fafc; }
+        .table tr:hover td { background: var(--bg-page); }
         
         .badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; }
         .badge-confirme { background: #dcfce7; color: #16a34a; }
@@ -87,24 +87,47 @@ $parAgent = $db->query("SELECT agent_nom, COUNT(*) as total FROM rendez_vous WHE
 
 <div class="loader"><div class="spinner"></div></div>
 
-<nav class="navbar">
-    <div class="navbar-container">
-        <a href="/projet/index.php" style="text-decoration: none;">
-            <div class="logo">
-                <img src="/projet/assets/images/innogov-logo.png" alt="InnoGov" class="logo-img">
-                <div class="logo-text">
-                    <p class="logo-subtitle">Administration</p>
-                </div>
+<div class="navbar-wrapper">
+    <nav class="navbar floating-pill">
+        <a href="/Gestion_RDV/projet/index.php" class="nav-logo-link">
+            <div class="logo-hybrid">
+                <div class="logo-circle"><i class="fas fa-leaf"></i></div>
+                <span class="logo-text-serif">InnoGov<small class="logo-subtitle">Municipalite</small></span>
             </div>
         </a>
         <div class="nav-menu">
-            <a href="/projet/VIEW/backoffice/admin-lister-rdv.php" class="nav-link">Rendez-vous</a>
-            <a href="/projet/VIEW/backoffice/admin-services.php" class="nav-link">Services</a>
-            <a href="/projet/VIEW/backoffice/admin-stats-rdv.php" class="nav-link active">Statistiques</a>
-            <a href="/projet/index.php" class="nav-link">Espace citoyen</a>
+            <a href="/Gestion_RDV/projet/VIEW/backoffice/admin-lister-rdv.php" class="nav-link">Rendez-vous</a>
+            <a href="/Gestion_RDV/projet/VIEW/backoffice/admin-services.php" class="nav-link">Services</a>
+            <a href="/Gestion_RDV/projet/VIEW/backoffice/admin-stats-rdv.php" class="nav-link active">Statistiques</a>
+            <a href="/Gestion_RDV/projet/index.php" class="nav-link">Espace citoyen</a>
         </div>
+        <div class="nav-actions">
+            <button class="icon-btn theme-toggle" title="Mode Sombre/Clair"><i class="fas fa-sun"></i></button>
+            <div class="lang-switcher-pill">
+                <button class="lang-btn active" data-lang="fr">FR</button>
+                <button class="lang-btn" data-lang="ar">AR</button>
+            </div>
+            <button onclick="window.print()" class="nav-cta">
+                <i class="fas fa-file-pdf"></i> Exporter
+            </button>
+        </div>
+    </nav>
+</div>
+
+<!-- HERO SECTION -->
+<section class="hero">
+    <div class="hero-slideshow">
+        <img src="/Gestion_RDV/projet/assets/images/tunisia1.jpg" class="slide active" alt="Tunisie">
+        <img src="/Gestion_RDV/projet/assets/images/tunisia2.jpg" class="slide" alt="Tunisie">
+        <img src="/Gestion_RDV/projet/assets/images/tunisia3.jpg" class="slide" alt="Tunisie">
+        <img src="/Gestion_RDV/projet/assets/images/tunisia4.jpg" class="slide" alt="Tunisie">
     </div>
-</nav>
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+        <h1>Administration Municipale</h1>
+        <p>Gérez les services et les rendez-vous en toute simplicité</p>
+    </div>
+</section>
 
 <div class="futuristic-container">
     <div class="page-header">
@@ -152,31 +175,53 @@ $parAgent = $db->query("SELECT agent_nom, COUNT(*) as total FROM rendez_vous WHE
             </div>
         </div>
 
-        <h3 style="margin-top: 40px; margin-bottom: 20px; padding-bottom: 10px; border-bottom: 2px solid #eee;"><i class="fas fa-table" style="color: #64748b;"></i> Données Détaillées</h3>
+        <h3 class="section-title reveal" style="margin-top: 40px;"><i class="fas fa-table"></i> Données Détaillées (Cliquer pour voir les détails)</h3>
         <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 30px;">
-            <div class="table-wrapper">
+            <div class="table-wrapper reveal">
                 <table class="table">
                     <thead><tr><th>Service</th><th>Nombre de RDV</th></tr></thead>
                     <tbody>
                         <?php foreach($parService as $s): ?>
-                        <tr><td><i class="fas fa-folder-open" style="color: var(--gray-400);"></i> <?= htmlspecialchars($s['nom_service']) ?></td><td><span class="badge badge-confirme"><?= $s['total'] ?></span></td></tr>
+                        <tr style="cursor: pointer;" onclick="showDetails('<?= htmlspecialchars($s['nom_service']) ?>', 'service')">
+                            <td><i class="fas fa-folder-open" style="color: var(--primary);"></i> <?= htmlspecialchars($s['nom_service']) ?></td>
+                            <td><span class="badge badge-confirme"><?= $s['total'] ?> RDV</span></td>
+                        </tr>
                         <?php endforeach; ?>
                     </tbody>
                 </table>
             </div>
 
-            <div class="table-wrapper">
+            <div class="table-wrapper reveal">
                 <table class="table">
                     <thead><tr><th>Agent</th><th>Nombre de RDV</th></tr></thead>
                     <tbody>
                         <?php foreach($parAgent as $a): ?>
-                        <tr><td><i class="fas fa-user-check" style="color: var(--gray-400);"></i> <?= htmlspecialchars($a['agent_nom']) ?></td><td><span class="badge badge-primary"><?= $a['total'] ?></span></td></tr>
+                        <tr style="cursor: pointer;" onclick="showDetails('<?= htmlspecialchars($a['agent_nom']) ?>', 'agent')">
+                            <td><i class="fas fa-user-tie" style="color: var(--secondary);"></i> <?= htmlspecialchars($a['agent_nom']) ?></td>
+                            <td><span class="badge badge-termine"><?= $a['total'] ?> RDV</span></td>
+                        </tr>
                         <?php endforeach; ?>
                         <?php if(empty($parAgent)): ?>
                         <tr><td colspan="2" style="text-align:center">Aucun agent affecté</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- DRILL-DOWN MODAL -->
+<div id="details-modal" class="premium-modal">
+    <div class="modal-3d-box" style="max-width: 800px;">
+        <button class="modal-close-btn" onclick="closePremiumModal('details-modal')">&times;</button>
+        <div class="modal-badge" id="modal-type-badge">Détails</div>
+        <h2 class="modal-title-glow" id="modal-detail-title">Chargement...</h2>
+        <p class="modal-subtitle">Liste des rendez-vous correspondants</p>
+        
+        <div id="modal-content-list" style="max-height: 400px; overflow-y: auto; margin-top: 20px;">
+            <div class="loader-inline" style="text-align: center; padding: 40px;">
+                <i class="fas fa-spinner fa-spin fa-2x" style="color: var(--primary);"></i>
             </div>
         </div>
     </div>
@@ -200,7 +245,7 @@ window.addEventListener('DOMContentLoaded', () => {
     const agentsData = <?= json_encode(array_column($parAgent, 'total')) ?>;
 
     // Configuration globale
-    Chart.defaults.font.family = "'Inter', sans-serif";
+    Chart.defaults.font.family = "'Roboto', sans-serif";
     Chart.defaults.color = '#64748b';
 
     // Graphique : Statuts
@@ -239,8 +284,8 @@ window.addEventListener('DOMContentLoaded', () => {
             datasets: [{
                 label: 'Nombre de RDV',
                 data: servicesData,
-                backgroundColor: 'rgba(8, 84, 64, 0.8)',
-                borderColor: '#085440',
+                backgroundColor: 'rgba(58, 90, 42, 0.8)',
+                borderColor: '#3a5a2a',
                 borderWidth: 1,
                 borderRadius: 8
             }]
@@ -271,8 +316,8 @@ window.addEventListener('DOMContentLoaded', () => {
                 datasets: [{
                     label: 'Nombre de RDV',
                     data: agentsData,
-                    backgroundColor: 'rgba(34, 197, 94, 0.8)',
-                    borderColor: '#22c55e',
+                    backgroundColor: 'rgba(192, 123, 61, 0.8)',
+                    borderColor: '#c07b3d',
                     borderWidth: 1,
                     borderRadius: 8
                 }]
@@ -294,7 +339,46 @@ window.addEventListener('DOMContentLoaded', () => {
             }
         });
     }
+    }
 });
+
+async function showDetails(name, type) {
+    openPremiumModal('details-modal');
+    document.getElementById('modal-detail-title').textContent = name;
+    document.getElementById('modal-type-badge').textContent = type === 'service' ? 'Par Service' : 'Par Agent';
+    const container = document.getElementById('modal-content-list');
+    container.innerHTML = '<div style="text-align:center; padding:40px;"><i class="fas fa-spinner fa-spin fa-2x"></i></div>';
+
+    try {
+        // We use the admin-lister-rdv.php as a source or create a small API endpoint
+        // For now, let's assume we can fetch data. We'll use the existing controller logic via a hidden fetch if needed, 
+        // but since we are in PHP, let's just use a simple fetch to a helper API we'll create.
+        const response = await fetch(`/Gestion_RDV/projet/api/get_rdv_details.php?type=${type}&name=${encodeURIComponent(name)}`);
+        const data = await response.json();
+
+        if (data.length === 0) {
+            container.innerHTML = '<p style="text-align:center; padding:20px;">Aucun rendez-vous trouvé.</p>';
+            return;
+        }
+
+        let html = '<div style="display:flex; flex-direction:column; gap:10px;">';
+        data.forEach(rdv => {
+            html += `
+                <div style="background:var(--bg-page); padding:15px; border-radius:15px; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <div style="font-weight:700;">${rdv.citoyen_nom}</div>
+                        <div style="font-size:0.85rem; color:var(--gray-700);">${rdv.date_heure}</div>
+                    </div>
+                    <div class="badge badge-${rdv.statut}">${rdv.statut}</div>
+                </div>
+            `;
+        });
+        html += '</div>';
+        container.innerHTML = html;
+    } catch (error) {
+        container.innerHTML = '<p style="color:var(--danger); text-align:center;">Erreur lors du chargement des données.</p>';
+    }
+}
 </script>
 </body>
 </html>
