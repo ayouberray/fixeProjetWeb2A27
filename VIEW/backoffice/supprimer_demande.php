@@ -1,5 +1,5 @@
 <?php
-
+// VIEW/backoffice/supprimer_demande.php
 
 require_once __DIR__ . '/../../CONTROLLER/DemandeController.php';
 
@@ -12,13 +12,13 @@ if (!$id_demande) {
 
 $controller = new DemandeController();
 
-
+// Vérifier si confirmation de suppression
 if (isset($_GET['confirm']) && $_GET['confirm'] === 'yes') {
-    
+    // Effectuer la suppression avec la nouvelle méthode
     $result = $controller->deleteDemandeConfirm($id_demande);
     
     if ($result['success']) {
-        
+        // Rediriger vers la page de succès
         header('Location: supprimer_demande.php?deleted=success&id=' . $id_demande);
         exit();
     } else {
@@ -28,7 +28,7 @@ if (isset($_GET['confirm']) && $_GET['confirm'] === 'yes') {
     }
 }
 
-
+// Afficher la confirmation de suppression
 $data = $controller->supprimer($id_demande);
 $demande = $data['demande'] ?? null;
 
@@ -37,7 +37,7 @@ if (!$demande) {
     exit();
 }
 
-
+// Page de succès après suppression
 if (isset($_GET['deleted']) && $_GET['deleted'] === 'success') {
     $deleted_id = isset($_GET['id']) ? (int)$_GET['id'] : 0;
     ?>
