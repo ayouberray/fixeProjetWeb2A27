@@ -1,4 +1,5 @@
 <?php
+// CONTROLLER/CandidatureController.php
 require_once __DIR__ . "/../MODEL/Candidature.php";
 require_once __DIR__ . "/../MODEL/Offre.php";
 
@@ -10,100 +11,49 @@ class CandidatureController {
         $this->candidatureModel = new Candidature();
         $this->offreModel = new Offre();
     }
+
+    // Traitement du formulaire de candidature (Front)
     public function postuler() {
-    if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $offre_id = $_POST['offre_id'];
-        $nom = $_POST['nom'];
-        $prenom = $_POST['prenom'];
-        $email = $_POST['email'];
-        $num_tel = $_POST['num_tel'];
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $offre_id = $_POST['offre_id'];
+            $nom = $_POST['nom'];
+            $prenom = $_POST['prenom'];
+            $email = $_POST['email'];
+            $num_tel = $_POST['num_tel'];
 
-        $errors = [];
-        if (empty($nom) || empty($prenom) || empty($email) || empty($num_tel))
-            $errors[] = "Tous les champs sont requis";
-        if (!filter_var($email, FILTER_VALIDATE_EMAIL))
-            $errors[] = "Email invalide";
-        if (!preg_match('/^[0-9+\- ]{8,15}$/', $num_tel))
-            $errors[] = "Numéro de téléphone invalide";
-        if (!isset($_FILES['cv']) || $_FILES['cv']['error'] !== UPLOAD_ERR_OK)
-            $errors[] = "CV manquant";
-        else {
-            $allowed = ['pdf', 'docx'];
-            $ext = strtolower(pathinfo($_FILES['cv']['name'], PATHINFO_EXTENSION));
-            if (!in_array($ext, $allowed))
-                $errors[] = "Format de CV non autorisé (PDF/DOCX uniquement)";
-        }
+            // Gestion du CV
+            $cv_path = '';
+            if (isset($_FILES['cv']) && $_FILES['cv']['error'] === UPLOAD_ERR_OK) {
+                $uploadDir = __DIR__ . "/../assets/uploads/cv/";
+                if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
+                $extension = pathinfo($_FILES['cv']['name'], PATHINFO_EXTENSION);
+                $fileName = uniqid('cv_') . '.' . $extension;
+                $destination = $uploadDir . $fileName;
+                if (move_uploaded_file($_FILES['cv']['tmp_name'], $destination)) {
+                    $cv_path = 'assets/uploads/cv/' . $fileName;
+                }
+            }
 
-        if (!empty($errors)) {
-            if ($this->isAjax()) {
-                header('Content-Type: application/json');
-                echo json_encode(['success' => false, 'message' => implode(', ', $errors)]);
-                exit;
-            } else {
-                header("Location: detail.php?id=$offre_id&error=1");
-                exit;
+            if ($cv_path) {
+                $result = $this->candidatureModel->create($offre_id, $nom, $prenom, $email, $num_tel, $cv_path);
+                if ($result) {
+                    header("Location: confirmation.php?success=1");
+                    exit;
+                }
             }
-        }
-
-        require_once __DIR__ . "/../MODEL/Offre.php";
-        $offreModel = new Offre();
-        $offre = $offreModel->getById($offre_id);
-        if (($offre['nb_candidats'] ?? 0) >= ($offre['nombre_postes'] ?? 0)) {
-            if ($this->isAjax()) {
-                header('Content-Type: application/json');
-                echo json_encode(['success' => false, 'message' => 'Désolé, cette offre est désormais complète.']);
-                exit;
-            }
-        }
-        $cv_path = '';
-        $uploadDir = __DIR__ . "/../assets/uploads/cv/";
-        if (!is_dir($uploadDir)) mkdir($uploadDir, 0777, true);
-        $extension = pathinfo($_FILES['cv']['name'], PATHINFO_EXTENSION);
-        $fileName = uniqid('cv_') . '.' . $extension;
-        $destination = $uploadDir . $fileName;
-        if (move_uploaded_file($_FILES['cv']['tmp_name'], $destination)) {
-            $cv_path = 'assets/uploads/cv/' . $fileName;
-        }
-
-        if ($cv_path) {
-            $candidatureId = $this->candidatureModel->create($offre_id, $nom, $prenom, $email, $num_tel, $cv_path);
-            if ($this->isAjax()) {
-                header('Content-Type: application/json');
-                echo json_encode([
-                    'success'       => (bool)$candidatureId,
-                    'candidature_id'=> $candidatureId,
-                    'nom'           => $nom,
-                    'prenom'        => $prenom,
-                    'offre_id'      => $offre_id,
-                    'message'       => $candidatureId ? 'Candidature envoyée' : 'Erreur enregistrement'
-                ]);
-                exit;
-            } else {
-                if ($candidatureId) header("Location: index.php?controller=candidature&action=badge&id=$candidatureId");
-                else header("Location: index.php?controller=offre&action=detail&id=$offre_id&error=1");
-                exit;
-            }
-        } else {
-            if ($this->isAjax()) {
-                header('Content-Type: application/json');
-                echo json_encode(['success' => false, 'message' => 'Erreur lors de l\'upload du CV']);
-                exit;
-            } else {
-                header("Location: detail.php?id=$offre_id&error=1");
-                exit;
-            }
+            // En cas d'erreur
+            header("Location: detail.php?id=$offre_id&error=1");
+            exit;
         }
     }
-}
-    
-private function isAjax() {
-    return !empty($_SERVER['HTTP_X_REQUESTED_WITH']) && 
-           strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest';
-}
+
+    // Backoffice : lister toutes les candidatures
     public function adminListerCandidatures() {
         $candidatures = $this->candidatureModel->getAll();
         include __DIR__ . "/../VIEW/backoffice/condidatures/lister.php";
     }
+
+    // Backoffice : accepter/refuser une candidature (AJAX)
     public function traiterCandidature() {
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $id = $_POST['id'];
@@ -115,6 +65,8 @@ private function isAjax() {
             exit;
         }
     }
+
+    // Télécharger le CV
     public function telechargerCV($id) {
         $candidature = $this->candidatureModel->getById($id);
         if ($candidature && !empty($candidature['cv_path'])) {

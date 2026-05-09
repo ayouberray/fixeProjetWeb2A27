@@ -3,18 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <title>Confirmation - InnoGov</title>
-    <link rel="stylesheet" href="/ProjettWeb/assets/css/style.css?v=<?= time() ?>">
+    <link rel="stylesheet" href="/ProjettWeb/assets/css/style.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="/ProjettWeb/assets/js/script.js?v=<?= time() ?>" defer></script>
 </head>
 <body>
     <header class="main-header">
-            <a href="index.php?controller=offre&action=lister" class="logo" style="display: flex; align-items: center; gap: 10px; text-decoration: none; font-weight: bold; font-size: 1.5rem; color: var(--primary);">
-                <i class="fas fa-briefcase"></i> INNOC@V
-            </a>
-            <div class="lang-toggle">
-                <button id="theme-toggle" class="lang-btn" title="Mode sombre"><i class="fas fa-moon"></i></button>
-            </div>
+        <div class="container header-inner">
+            <a href="index.php?controller=offre&action=lister" class="logo">
+    <img src="/ProjettWeb/assets/css/logo.png" alt="Logo InnoGov" style="height: 40px;">
+</a>
         </div>
     </header>
 

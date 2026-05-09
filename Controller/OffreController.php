@@ -1,4 +1,5 @@
 <?php
+// CONTROLLER/OffreController.php
 require_once __DIR__ . "/../MODEL/Offre.php";
 
 class OffreController {
@@ -8,13 +9,13 @@ class OffreController {
         $this->offreModel = new Offre();
     }
 
+    // Afficher la liste des offres (Front)
     public function listerOffres() {
-        $search = $_GET['search'] ?? '';
-        $sort = $_GET['sort'] ?? 'id_offre DESC';
-        $offres = $this->offreModel->getAll($search, $sort);
+        $offres = $this->offreModel->getAll();
         include __DIR__ . "/../VIEW/frontoffice/offres/lister.php";
     }
 
+    // Afficher le détail d'une offre (Front)
     public function detailOffre($id) {
         $offre = $this->offreModel->getById($id);
         if (!$offre) {
@@ -25,20 +26,9 @@ class OffreController {
         include __DIR__ . "/../VIEW/frontoffice/offres/detail.php";
     }
 
+    // --- Backoffice ---
     public function adminListerOffres() {
-        $search = $_GET['search'] ?? '';
-        $sort = $_GET['sort'] ?? 'id_offre DESC';
-        $offres = $this->offreModel->getAll($search, $sort);
-        $db = Config::getConnexion();
-        $stats = [
-            'total_offres'          => $db->query("SELECT COUNT(*) FROM offre")->fetchColumn(),
-            'offres_urgentes'       => $db->query("SELECT COUNT(*) FROM offre WHERE statut = 'Ouvert' AND DATEDIFF(date_limite, CURDATE()) BETWEEN 0 AND 7")->fetchColumn(),
-            'total_candidatures'    => $db->query("SELECT COUNT(*) FROM condidature")->fetchColumn(),
-            'candidatures_attente'  => $db->query("SELECT COUNT(*) FROM condidature WHERE statut = 'en_attend'")->fetchColumn(),
-            'candidatures_semaine'  => $db->query("SELECT COUNT(*) FROM condidature WHERE date_cond >= DATE_SUB(NOW(), INTERVAL 7 DAY)")->fetchColumn(),
-            'taux_traitement'       => $db->query("SELECT ROUND((SELECT COUNT(*) FROM condidature WHERE statut != 'en_attend') / GREATEST(COUNT(*),1) * 100) FROM condidature")->fetchColumn()
-        ];
-
+        $offres = $this->offreModel->getAll();
         include __DIR__ . "/../VIEW/backoffice/offres/lister.php";
     }
 
@@ -76,8 +66,14 @@ class OffreController {
     }
 
     public function supprimerOffre($id) {
-        $result = $this->offreModel->delete($id);
-        header("Location: index.php?controller=offre&action=admin-lister&msg=supprime");
-        exit;
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $result = $this->offreModel->delete($id);
+            header('Content-Type: application/json');
+            echo json_encode(['success' => $result]);
+            exit;
+        }
+        // GET : afficher une confirmation (facultatif)
+        $offre = $this->offreModel->getById($id);
+        include __DIR__ . "/../VIEW/backoffice/offres/supprimer.php";
     }
 }
