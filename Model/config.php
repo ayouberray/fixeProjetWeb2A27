@@ -1,21 +1,36 @@
-<?php
+﻿<?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+
 class Config {
-    private static $pdo = null;
+    private static $pdo;
+    private static $checked = false;
 
     public static function getConnexion() {
-        if (self::$pdo === null) {
-            $servername = "localhost";
-            $username = "root";
-            $password = "";
-            $dbname = "municipalite";
+        if (!self::$checked) {
+            self::$checked = true;
+            $servername = 'localhost';
+            $username = 'root';
+            $password = '';
+            $dbname = '2a27';
+
             try {
-                self::$pdo = new PDO("mysql:host=$servername;dbname=$dbname;charset=utf8mb4", $username, $password);
-                self::$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-                self::$pdo->setAttribute(PDO::ATTR_DEFAULT_FETCH_MODE, PDO::FETCH_ASSOC);
+                self::$pdo = new PDO(
+                    "mysql:host=$servername;dbname=$dbname;charset=utf8mb4",
+                    $username,
+                    $password,
+                    [
+                        PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                        PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                    ]
+                );
             } catch (PDOException $e) {
-                die("Erreur de connexion : " . $e->getMessage());
+                error_log('Erreur connexion DB: ' . $e->getMessage());
+                self::$pdo = null;
             }
         }
+
         return self::$pdo;
     }
 }
+?>
