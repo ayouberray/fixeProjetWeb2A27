@@ -8,7 +8,7 @@
 
 // Connexion à la base de données
 $host = 'localhost';
-$dbname = 'innogov_db';
+$dbname = '2a27';
 $username = 'root';
 $password = '';
 

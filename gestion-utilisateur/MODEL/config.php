@@ -7,7 +7,7 @@ class Database {
     private $pdo;
     
     private $host = 'localhost';
-    private $dbname = 'innogov_db';
+    private $dbname = '2a27';
     private $username = 'root';
     private $password = '';
     
